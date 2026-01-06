@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   snu-toto:
-    image: ${{ secrets.DOCKER_HUB_USERNAME }}/snu-toto:latest 
+    image: tacobro/snu-toto:latest 
     container_name: snu-toto
     env_file:
       - .env.prod
