@@ -15,4 +15,4 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["uv", "run", "uvicorn", "snu_toto.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uv", "run", "uvicorn", "snu_toto.app.main:app", "--host", "0.0.0.0", "--port", "8080"]
