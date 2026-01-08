@@ -3,6 +3,11 @@ import uuid
 from sqlalchemy import String, Integer, DateTime, Boolean, Enum, ForeignKey, Text, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.users.models import User
+    from app.bets.models import Bet
 
 class EventStatus(str, enum.Enum):
     """이벤트 상태를 위한 Enum"""
@@ -70,9 +75,13 @@ class Event(Base):
 
     options: Mapped[list["EventOption"]] = relationship("EventOption", back_populates="event")
     images: Mapped[list["EventImage"]] = relationship("EventImage", back_populates="event")
+    creator: Mapped["User"] = relationship("User", back_populates="created_events")
+    bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="event")
 
     __table_args__ = (
         CheckConstraint("CHAR_LENGTH(title) >= 5", name="check_event_title_length"),
+        CheckConstraint("start_at >= created_at", name="check_event_start_after_created"), # start_at가 NULL이어도 통과
+        CheckConstraint("end_at > start_at", name="check_event_end_after_start"),
     )
 
 class EventOption(Base):
@@ -120,6 +129,7 @@ class EventOption(Base):
     )
 
     event: Mapped["Event"] = relationship("Event", back_populates="options")
+    bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="option")
 
     __table_args__ = (
         UniqueConstraint("event_id", "name", name="uq_event_option_name"),

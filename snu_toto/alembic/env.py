@@ -43,7 +43,18 @@ target_metadata = Base.metadata
 
 
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    # 내가 현재 연결한 DB 이름 (예: 'snutoto')만 감시하도록 필터 추가
+    def include_object(object, name, type_, reflected, compare_to):
+        if type_ == "table" and object.schema is not None:
+            return False  # 다른 스키마(DB)의 테이블은 무시
+        return True
+    
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        compare_type=True,              # 컬럼 타입 변경 감지
+        include_object=include_object
+    )
     with context.begin_transaction():
         context.run_migrations()
 
