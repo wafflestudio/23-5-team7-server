@@ -1,23 +1,26 @@
 from pydantic import BaseModel
+from datetime import datetime
 from events.models import EventStatus
+from snu_toto.app.common.exceptions import InvalidFieldFormatException, MissingRequiredFieldException
 
 class OptionResponse(BaseModel):
     option_id: str
     name: str
-    total_bet_amount: int
+    option_total_amount: int
     participant_count: int
     odds: float
-    is_winner: bool
+    is_winner: bool | None
 
 class ImageResponse(BaseModel):
-    url: str
+    image_url: str
     display_order: int
 
 class EventDetailResponse(BaseModel):
     event_id: str
     title: str
-    description: str
+    description: str | None
     status: EventStatus
     total_participants: int
+    end_at: datetime
     options: list[OptionResponse]
     images: list[ImageResponse]
