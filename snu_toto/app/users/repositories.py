@@ -7,6 +7,11 @@ class UserRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_by_id(self, user_id: str) -> Optional[User]:
+        """ID로 사용자 조회"""
+        result = await self.db.execute(select(User).filter(User.user_id == user_id))
+        return result.scalar_one_or_none()
+
     async def get_by_email(self, email: str) -> Optional[User]:
         """이메일로 사용자 조회"""
         result = await self.db.execute(select(User).filter(User.email == email))

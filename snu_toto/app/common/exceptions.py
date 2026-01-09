@@ -9,7 +9,8 @@ class SnutotoException(Exception):
         self,
         status_code: int = 500,
         error_code: str = "ERR_000",
-        error_msg: str = "Unexpected error occurred"
+        error_msg: str = "Unexpected error occurred",
+        payload: dict = None
     ):
         if not isinstance(status_code, int) or status_code not in http.HTTPStatus.__members__.values():
             logger.critical(f"Invalid status_code {status_code} provided to SnutotoException, defaulting to 500")
@@ -30,6 +31,12 @@ class SnutotoException(Exception):
                             f" defaulting to '{self.error_msg}'")
         else:
             self.error_msg = error_msg
+        
+        if payload is not None and not isinstance(payload, dict):
+            logger.error(f"Invalid payload type {type(payload)} provided, expected dict. Defaulting to empty dict.")
+            self.payload = {}
+        else:
+            self.payload = payload or {} # None이면 빈 딕셔너리로 초기화
 
 
 class MissingRequiredFieldException(SnutotoException):
