@@ -2,12 +2,12 @@ import enum
 import uuid
 from sqlalchemy import String, Integer, DateTime, Boolean, Enum, ForeignKey, Text, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.core.database import Base
+from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.users.models import User
-    from app.bets.models import Bet
+    from snu_toto.app.users.models import User
+    from snu_toto.app.bets.models import Bet
 
 class EventStatus(str, enum.Enum):
     """이벤트 상태를 위한 Enum"""
