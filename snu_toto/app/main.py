@@ -40,12 +40,12 @@ app.add_middleware(
 
 
 # 라우터 등록 (라우터 파일이 구현되면 주석 해제)
-# from .auth.router import router as auth_router
-from .users.router import router as users_router
+from .auth.router import auth_router
+from .users.router import users_router
 # from .events.router import router as events_router
 # from .bets.router import router as bets_router
 # 
-# app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
+app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 # app.include_router(events_router, prefix="/api/events", tags=["events"])
 # app.include_router(bets_router, prefix="/api/bets", tags=["bets"])
