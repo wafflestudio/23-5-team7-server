@@ -1,4 +1,4 @@
-from app.common.exceptions import SnutotoException
+from snu_toto.app.common.exceptions import SnutotoException
 
 class EventNotFoundError(SnutotoException):
     def __init__(self) -> None:

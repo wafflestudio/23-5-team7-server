@@ -5,8 +5,8 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.events.models import Event, EventOption
-from core.database import get_db_session
-from events.models import EventStatus, EventImage
+from snu_toto.app.core.database import get_db_session
+from snu_toto.app.events.models import EventStatus, EventImage
 
 
 class EventRepositories:

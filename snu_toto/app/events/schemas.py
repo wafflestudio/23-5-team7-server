@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from events.models import EventStatus
-from snu_toto.app.common.exceptions import InvalidFieldFormatException, MissingRequiredFieldException
+from snu_toto.app.events.models import EventStatus
 
 class OptionResponse(BaseModel):
     option_id: str

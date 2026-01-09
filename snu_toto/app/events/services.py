@@ -1,9 +1,9 @@
-from events.repositories import EventRepositories
-from events.exceptions import EventNotFoundError
+from snu_toto.app.events.repositories import EventRepositories
+from snu_toto.app.events.exceptions import EventNotFoundError
 from fastapi import Depends
 from typing import Annotated, List
-from events.models import EventStatus, EventOption
-from events.schemas import EventDetailResponse, OptionResponse, ImageResponse
+from snu_toto.app.events.models import EventStatus, EventOption
+from snu_toto.app.events.schemas import EventDetailResponse, OptionResponse, ImageResponse
 
 
 class EventServices:
