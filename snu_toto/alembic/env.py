@@ -13,7 +13,7 @@ sys.path.append(os.path.join(os.getcwd(), "snu_toto"))
 
 
 # Alembic을 통해 인식돼야 하는 모델
-from app.core.database import Base
+from snu_toto.app.core.database import Base # 모든 models.py가 동일한 절대 경로를 사용해야 Base를 같은 것으로 인식
 from app.core.config import DB_SETTINGS
 from app.users.models import User, PointHistory
 from app.events.models import Event, EventOption, EventImage
@@ -29,6 +29,11 @@ config.set_main_option("sqlalchemy.url", DB_SETTINGS.url)
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# 디버깅용
+# print("--- 로드된 테이블 목록 ---")
+# print(Base.metadata.tables.keys())
+# print("-----------------------")
 
 # add your model's MetaData object here
 # for 'autogenerate' support

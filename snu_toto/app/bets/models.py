@@ -2,12 +2,12 @@ import enum
 import uuid
 from sqlalchemy import String, Integer, DateTime, Enum, ForeignKey, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.core.database import Base
+from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from app.users.models import User, PointHistory
-    from app.events.models import Event, EventOption
+    from snu_toto.app.users.models import User, PointHistory
+    from snu_toto.app.events.models import Event, EventOption
 
 class BetStatus(str, enum.Enum):
     """베팅 상태를 위한 Enum"""
@@ -70,7 +70,6 @@ class Bet(Base):
     )
 
     user: Mapped["User"] = relationship("User", back_populates="bets")
-    point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="bet")
     option: Mapped["EventOption"] = relationship("EventOption", back_populates="bets")
     event: Mapped["Event"] = relationship("Event", back_populates="bets")
 
