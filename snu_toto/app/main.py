@@ -41,12 +41,12 @@ app.add_middleware(
 
 # 라우터 등록 (라우터 파일이 구현되면 주석 해제)
 # from .auth.router import router as auth_router
-# from .users.router import router as users_router
+from .users.router import router as users_router
 # from .events.router import router as events_router
 # from .bets.router import router as bets_router
 # 
 # app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
-# app.include_router(users_router, prefix="/api/users", tags=["users"])
+app.include_router(users_router, prefix="/api/users", tags=["users"])
 # app.include_router(events_router, prefix="/api/events", tags=["events"])
 # app.include_router(bets_router, prefix="/api/bets", tags=["bets"])
 
@@ -65,8 +65,14 @@ async def custom_exception_handler(request: Request, exc: SnutotoException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     for error in exc.errors():
+        # 필수 필드 누락(ERR_001)
         if error["type"] == "missing":
             raise MissingRequiredFieldException()
+
+        # 형식 및 길이 위반(ERR_002)
+        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type"]:
+            raise InvalidFormatException()
+        
     return await request_validation_exception_handler(request, exc)
 
 @app.get("/")
