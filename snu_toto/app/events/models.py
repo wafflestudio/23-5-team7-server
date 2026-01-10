@@ -1,5 +1,6 @@
 import enum
 import uuid
+from click import option
 from sqlalchemy import String, Integer, DateTime, Boolean, Enum, ForeignKey, Text, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from snu_toto.app.core.database import Base
@@ -113,9 +114,16 @@ class EventOption(Base):
         Integer, 
         nullable=False
     )
-    
+
+    # 총 참여 인원 (1/9 추가됨)
+    participant_count: Mapped[int] = mapped_column(
+        Integer, 
+        default=0,
+        server_default="0",
+        nullable=False)
+
     # 총 베팅 금액 
-    total_bet_amount: Mapped[int] = mapped_column(
+    option_total_amount: Mapped[int] = mapped_column(
         Integer, 
         default=0, 
         server_default="0",
@@ -134,7 +142,7 @@ class EventOption(Base):
     __table_args__ = (
         UniqueConstraint("event_id", "name", name="uq_event_option_name"),
         CheckConstraint("`order` >= 0", name="check_option_order_positive"),
-        CheckConstraint("total_bet_amount >= 0", name="check_total_bet_positive"),
+        CheckConstraint("option_total_amount >= 0", name="check_total_bet_positive"),
     )
 
 class EventImage(Base):
