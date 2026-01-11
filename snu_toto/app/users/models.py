@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import String, Integer, DateTime, Boolean, Enum, ForeignKey, func, CheckConstraint
+from sqlalchemy import String, Integer, DateTime, Boolean, Enum, ForeignKey, func, CheckConstraint, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING, Optional
@@ -13,6 +13,11 @@ class UserRole(str, enum.Enum):
     """관리자 여부를 위한 Enum"""
     USER = "USER"
     ADMIN = "ADMIN"
+
+class SocialType(enum.Enum):
+    LOCAL = "LOCAL"
+    GOOGLE = "GOOGLE"
+    KAKAO = "KAKAO"
 
 class PointReason(str, enum.Enum):
     """포인트 기록 변경 사유를 위한 Enum"""
@@ -42,9 +47,9 @@ class User(Base):
     )
     
     # 비밀번호
-    hashed_password: Mapped[str] = mapped_column(
+    hashed_password: Mapped[Optional[str]] = mapped_column(
         String(255), 
-        nullable=False
+        nullable=True # 소셜 로그인의 경우 password를 저장하지 않음
     )
     
     # 닉네임
@@ -82,7 +87,28 @@ class User(Base):
         Boolean, 
         default=False, 
         server_default="0",
-        nullable=False,
+        nullable=False
+    )
+
+    # 서울대 이메일 인증 여부
+    is_snu_verified: Mapped[bool] = mapped_column(
+        Boolean, 
+        default=False,
+        server_default="0",
+        nullable=False
+    )
+
+    # 소셜 로그인 타입
+    social_type: Mapped[SocialType] = mapped_column(
+        Enum(SocialType), 
+        default=SocialType.LOCAL,
+        server_default="LOCAL"
+    )
+
+    # 소셜 ID
+    social_id: Mapped[Optional[str]] = mapped_column(
+        String(200), 
+        nullable=True, 
     )
 
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
@@ -92,6 +118,7 @@ class User(Base):
     __table_args__ = (
         CheckConstraint("points >= 0", name="check_points_positive"),
         CheckConstraint("CHAR_LENGTH(nickname) >= 2", name="check_nickname_length"),
+        UniqueConstraint('social_type', 'social_id', name='uq_social_type_id'),
     )
 
 class PointHistory(Base):
