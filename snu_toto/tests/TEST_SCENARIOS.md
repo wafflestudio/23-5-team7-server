@@ -31,47 +31,49 @@ snu_toto/tests/
 ## 0. Overview: Use Case Diagram
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph Actors["Actors"]
-        User["일반 유저"]
-        Admin["관리자"]
+        User["👤 일반 유저"]
+        Admin["🔧 관리자"]
     end
 
-    subgraph AuthAPI["인증 API"]
-        UC1(("POST /users"))
-        UC2(("POST /auth/login"))
-        UC3(("POST /verify-email"))
+    subgraph AuthFlow["인증 플로우"]
+        direction TB
+        A1["POST /users<br/>회원가입"]
+        A2["POST /verify-email<br/>이메일 인증"]
+        A3["POST /auth/login<br/>로그인"]
+        A1 -->|1. 가입 후| A2
+        A2 -->|2. 인증 후| A3
     end
 
-    subgraph EventsAPI["이벤트 API"]
-        UC4(("POST /events"))
-        UC5(("GET /events"))
-        UC6(("PATCH /status"))
-        UC7(("POST /settle"))
+    subgraph EventFlow["이벤트 플로우"]
+        direction TB
+        E1["POST /events<br/>이벤트 생성"]
+        E2["GET /events<br/>이벤트 조회"]
+        E3["PATCH /status<br/>READY→OPEN"]
+        E4["POST /bets<br/>베팅"]
+        E5["PATCH /status<br/>OPEN→CLOSED"]
+        E6["POST /settle<br/>정산"]
+        E1 -->|3. 생성 후| E3
+        E3 -->|4. OPEN 후| E4
+        E4 -->|5. 마감| E5
+        E5 -->|6. CLOSED 후| E6
     end
 
-    subgraph BetsAPI["베팅 API"]
-        UC8(("POST /bets"))
-        UC9(("GET /me/bets"))
-        UC10(("GET /events/bets"))
+    subgraph BetQuery["베팅 조회"]
+        B1["GET /me/bets<br/>내 베팅"]
+        B2["GET /events/bets<br/>전체 베팅"]
     end
 
-    %% Actor → API
-    User --> UC1
-    User --> UC5
-    User --> UC8
-    User --> UC9
-    Admin --> UC4
-    Admin --> UC6
-    Admin --> UC7
-    Admin --> UC10
-
-    %% API Dependencies (점선)
-    UC1 -.->|가입 후| UC3
-    UC3 -.->|인증 후| UC2
-    UC4 -.->|생성 후| UC6
-    UC6 -.->|OPEN 후| UC8
-    UC6 -.->|CLOSED 후| UC7
+    User --> A1
+    User --> E2
+    User --> E4
+    User --> B1
+    Admin --> E1
+    Admin --> E3
+    Admin --> E5
+    Admin --> E6
+    Admin --> B2
 ```
 
 ---
