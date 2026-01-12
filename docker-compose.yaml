@@ -56,3 +56,6 @@ services:
 
 networks:
   my-network:
+
+volumes:
+  redis_data:
