@@ -71,4 +71,4 @@ jobs:
             
             # [디버깅 로그 3] 파이썬 앱이 출력한 DEBUG 로그 확인
             echo "CHECK: Python App Debug Logs ->"
-            sudo docker compose logs snu-toto | grep DEBUG 
+            sudo docker-compose logs snu-toto | grep DEBUG
