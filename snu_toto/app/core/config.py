@@ -71,3 +71,46 @@ class GoogleSettings(BaseSettings):
     )
 
 GOOGLE_SETTINGS = GoogleSettings()
+    
+
+class RedisSettings(BaseSettings):
+    URL: str
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_prefix="REDIS_",
+        env_file=SETTINGS.env_file,
+        extra='ignore'
+    )
+
+REDIS_SETTINGS = RedisSettings()
+
+
+class EmailSettings(BaseSettings):
+    HOST: str
+    PORT: int
+    USER: str
+    PASSWORD: str
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_prefix="SMTP_",
+        env_file=SETTINGS.env_file,
+        extra='ignore'
+    )
+
+EMAIL_SETTINGS = EmailSettings()
+
+class AuthSettings(BaseSettings):
+    ACCESS_TOKEN_SECRET: str
+    REFRESH_TOKEN_SECRET: str
+    SHORT_SESSION_LIFESPAN: int = 15 # 15분
+    LONG_SESSION_LIFESPAN: int = 24 * 60 # 24시간
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=SETTINGS.env_file,
+        extra='ignore'
+    )
+
+AUTH_SETTINGS = AuthSettings()
