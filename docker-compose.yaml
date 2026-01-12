@@ -6,9 +6,22 @@ services:
     container_name: snu-toto
     env_file:
       - .env.prod
+    environment:
+      - REDIS_URL=redis://redis:6379
     expose:
       - "8080"
     command: sh -c 'uv run alembic upgrade head && uv run uvicorn snu_toto.app.main:app --host 0.0.0.0 --port 8080'
+    restart: always
+    depends_on:
+      - redis
+    networks:
+      - my-network
+  
+  redis:
+    image: redis:latest
+    container_name: redis-container
+    expose:
+      - "6379"
     restart: always
     networks:
       - my-network

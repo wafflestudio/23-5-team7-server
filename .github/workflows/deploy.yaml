@@ -48,6 +48,29 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd snu-toto
+
+            # .env.prod 파일을 새로 만들고 내용 덧붙이기
+            cat <<EOF > .env.prod
+            DB_DIALECT=${{ secrets.DB_DIALECT }}
+            DB_DRIVER=${{ secrets.DB_DRIVER }}
+            DB_ASYNC_DRIVER=${{ secrets.DB_DRIVER }}
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_DATABASE=${{ secrets.DB_DATABASE }}
+            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
+            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            EOF
+
             sudo docker-compose down
             sudo docker-compose pull
             sudo docker-compose up -d --remove-orphans
