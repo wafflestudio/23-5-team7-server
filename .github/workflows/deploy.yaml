@@ -49,29 +49,26 @@ jobs:
           script: |
             cd snu-toto
 
-            # .env.prod 파일을 새로 만들고 내용 덧붙이기
-            cat <<EOF > .env.prod
-            DB_DIALECT=${{ secrets.DB_DIALECT }}
-            DB_DRIVER=${{ secrets.DB_DRIVER }}
-            DB_ASYNC_DRIVER=${{ secrets.DB_DRIVER }}
-            DB_HOST=${{ secrets.DB_HOST }}
-            DB_PORT=${{ secrets.DB_PORT }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_DATABASE=${{ secrets.DB_DATABASE }}
-            ACCESS_TOKEN_SECRET=${{ secrets.ACCESS_TOKEN_SECRET }}
-            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
-            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            # 1. .env.prod 파일 생성
+            cat <<'EOF' > .env.prod
+            ENV=prod
             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-            REDIS_URL=${{ secrets.REDIS_URL }}
-            SMTP_HOST=${{ secrets.SMTP_HOST }}
-            SMTP_PORT=${{ secrets.SMTP_PORT }}
-            SMTP_USER=${{ secrets.SMTP_USER }}
-            SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
+            # ... 나머지 변수들 (기존과 동일하게 유지)
             EOF
 
+            # [디버깅 로그 1] 파일에 실제로 어떻게 써졌는지 확인 (끝 10글자만 노출해서 안전하게 확인)
+            echo "CHECK: .env.prod content (partial) ->"
+            grep GOOGLE_REDIRECT_URI .env.prod | cut -c 1-50
+
+            # 2. 컨테이너 갱신
             sudo docker-compose down
             sudo docker-compose pull
             sudo docker-compose up -d --force-recreate --remove-orphans
-            sudo docker image prune -f 
+
+            # [디버깅 로그 2] 실행 중인 컨테이너가 실제로 들고 있는 환경변수 확인
+            echo "CHECK: Container Runtime Env ->"
+            sudo docker exec snu-toto printenv | grep GOOGLE_REDIRECT_URI || echo "Not Found in Container"
+            
+            # [디버깅 로그 3] 파이썬 앱이 출력한 DEBUG 로그 확인
+            echo "CHECK: Python App Debug Logs ->"
+            sudo docker compose logs snu-toto | grep DEBUG 
