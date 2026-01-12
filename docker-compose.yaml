@@ -22,6 +22,8 @@ services:
     container_name: redis-container
     expose:
       - "6379"
+    volumes:
+      - redis_data:/data  # 컨테이너가 새로 만들어져도 데이터가 지워지지 않음
     restart: always
     networks:
       - my-network
