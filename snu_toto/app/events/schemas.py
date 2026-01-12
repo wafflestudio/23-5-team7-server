@@ -9,10 +9,10 @@ class OptionResponse(BaseModel):
     participant_count: int
     odds: float
     is_winner: bool | None
+    option_image_url: str | None
 
 class ImageResponse(BaseModel):
     image_url: str
-    display_order: int
 
 class EventDetailResponse(BaseModel):
     event_id: str
