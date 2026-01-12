@@ -49,7 +49,6 @@ jobs:
           script: |
             cd snu-toto
 
-            # 1. .env.prod 파일 생성
             cat <<'EOF' > .env.prod
             DB_DIALECT=${{ secrets.DB_DIALECT }}
             DB_DRIVER=${{ secrets.DB_DRIVER }}
@@ -71,3 +70,8 @@ jobs:
             SMTP_PASSWORD=${{ secrets.SMTP_PASSWORD }}
             ENV=prod
             EOF
+
+            sudo docker-compose down
+            sudo docker-compose pull
+            sudo docker-compose up -d --remove-orphans
+            sudo docker image prune -f
