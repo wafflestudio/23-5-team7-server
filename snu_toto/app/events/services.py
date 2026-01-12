@@ -30,7 +30,8 @@ class EventServices:
             option_total_amount=option.option_total_amount,
             participant_count=option.participant_count,
             odds=odds,
-            is_winner=option.is_winner
+            is_winner=option.is_winner,
+            option_image_url=option.option_image_url
         )
 
     async def get_event_details(self, event_id: str) -> EventDetailResponse:

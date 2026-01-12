@@ -135,6 +135,12 @@ class EventOption(Base):
         Boolean, 
         nullable=True
     )
+    
+    # 옵션 이미지 URL
+    option_image_url: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True
+    )
 
     event: Mapped["Event"] = relationship("Event", back_populates="options")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="option")
