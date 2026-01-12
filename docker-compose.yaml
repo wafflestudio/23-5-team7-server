@@ -8,7 +8,7 @@ services:
       - .env.prod
     expose:
       - "8080"
-    command: uv run uvicorn snu_toto.app.main:app --host 0.0.0.0 --port 8080
+    command: sh -c "uv run alembic upgrade head && uv run uvicorn snu_toto.app.main:app --host 0.0.0.0 --port 8080”
     restart: always
     networks:
       - my-network
@@ -35,7 +35,7 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
       - /var/www/certbot:/var/www/certbot
-    # 12시간마다 인증서 갱신 시도 (이건 뭐지?)
+    # 12시간마다 인증서 갱신 시도
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 networks:
