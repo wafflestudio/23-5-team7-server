@@ -39,3 +39,11 @@ class MissingRequiredFieldException(SnutotoException):
             error_code="ERR_001",
             error_msg="MISSING REQUIRED FIELDS"
         )
+
+class InvalidFormatException(SnutotoException):
+    def __init__(self):
+        super().__init__(
+            status_code=400,
+            error_code="ERR_002",
+            error_msg="INVALID FIELD FORMAT"
+        )

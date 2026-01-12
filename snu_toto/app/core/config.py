@@ -56,3 +56,18 @@ class DatabaseSettings(BaseSettings):
     )
 
 DB_SETTINGS = DatabaseSettings()
+
+
+class GoogleSettings(BaseSettings):
+    CLIENT_ID: str
+    CLIENT_SECRET: str
+    REDIRECT_URI: str
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_prefix="GOOGLE_",
+        env_file=SETTINGS.env_file,
+        extra='ignore'
+    )
+
+GOOGLE_SETTINGS = GoogleSettings()
