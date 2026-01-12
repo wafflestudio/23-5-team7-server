@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   snu-toto:
     image: tacobro/snu-toto:latest 
