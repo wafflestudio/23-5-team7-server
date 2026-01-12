@@ -7,6 +7,7 @@ services:
     env_file:
       - .env.prod
     environment:
+      - ENV=prod
       - REDIS_URL=redis://redis:6379
     expose:
       - "8080"
