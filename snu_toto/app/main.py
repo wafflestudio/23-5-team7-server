@@ -7,7 +7,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 
 from snu_toto.app.core.database import engine
 from snu_toto.app.core.config import SETTINGS
-from snu_toto.app.common.exceptions import SnutotoException, MissingRequiredFieldException
+from snu_toto.app.common.exceptions import SnutotoException, MissingRequiredFieldException, InvalidFormatException
 from snu_toto.app.users import models as user_models
 from snu_toto.app.events import models as event_models
 from snu_toto.app.bets import models as bet_models
