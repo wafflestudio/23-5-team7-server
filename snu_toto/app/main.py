@@ -53,12 +53,18 @@ app.include_router(event_router, prefix="/api/events", tags=["events"])
 # 커스텀 예외 핸들러
 @app.exception_handler(SnutotoException)
 async def custom_exception_handler(request: Request, exc: SnutotoException):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
+    content = {
             "error_code": exc.error_code,
             "error_msg": exc.error_msg
         }
+        
+    # payload 안에 데이터(예: verification_token)가 있다면 병합
+    if exc.payload:
+        content.update(exc.payload)
+        
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content
     )
 # 에러 형태 통일
 @app.exception_handler(RequestValidationError)
