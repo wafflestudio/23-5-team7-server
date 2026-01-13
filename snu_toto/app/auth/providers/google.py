@@ -1,4 +1,5 @@
 import httpx
+from urllib.parse import urlencode
 from snu_toto.app.core.config import GOOGLE_SETTINGS
 
 class GoogleAuthClient:
@@ -19,7 +20,7 @@ class GoogleAuthClient:
             "access_type": "offline",
             "prompt": "select_account"
         }
-        query_string = "&".join([f"{k}={v}" for k, v in params.items()])
+        query_string = urlencode(params)
         return f"https://accounts.google.com/o/oauth2/v2/auth?{query_string}"
 
     async def get_user_info(self, code: str) -> dict:

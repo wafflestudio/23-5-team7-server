@@ -143,6 +143,38 @@ sequenceDiagram
 
 ---
 
+### 1-2-1. 구글 OAuth (`test_auth.py`)
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as GET /auth/google/callback
+    participant Google as Google Server
+    participant DB as Database
+
+    Client->>API: code=인가코드
+    API->>Google: 토큰 요청
+    Google-->>API: access_token
+    API->>Google: 유저 정보 요청
+    Google-->>API: email, name
+    API->>DB: 이메일로 유저 조회
+    alt 신규 유저
+        API->>DB: 유저 생성
+        API-->>Client: 200 + is_new: true
+    else 기존 유저
+        API-->>Client: 200 + is_new: false
+    end
+```
+
+| ID | 시나리오 | API | 예상 결과 |
+|----|----------|-----|-----------|
+| A15 | 구글 콜백 성공 (신규 가입) | GET /api/auth/google/callback | 200, `is_new: true` |
+| A16 | 구글 콜백 성공 (기존 유저) | GET /api/auth/google/callback | 200, `is_new: false` |
+| A17 | 콜백 code 누락 | GET /api/auth/google/callback | 400, `ERR_020` |
+| A18 | 구글 인증 실패 | GET /api/auth/google/callback | 400, `ERR_019` |
+
+---
+
 ### 1-3. 인증코드 발송 (`test_auth.py`)
 
 ```mermaid
@@ -446,6 +478,123 @@ sequenceDiagram
 
 ### 2-3. 통합 테스트 케이스
 
+#### I01. 회원가입 → 인증 → 로그인 (API 5개)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant Signup as POST /users
+    participant Login as POST /login
+    participant Send as POST /verify-email/send
+    participant Confirm as POST /verify-email/confirm
+
+    C->>Signup: 회원가입
+    Signup-->>C: 201
+
+    C->>Login: 로그인 시도 (미인증)
+    Login-->>C: 403 ERR_015
+
+    C->>Send: 인증코드 발송
+    Send-->>C: 200
+
+    C->>Confirm: 코드 확인
+    Confirm-->>C: 200
+
+    C->>Login: 재로그인
+    Login-->>C: 200 + access_token
+```
+
+**검증**: 인증 전 로그인 불가(403), 인증 후 로그인 가능(200)
+
+---
+
+#### I02. 이벤트 생성 → 오픈 → 베팅 (API 3개)
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant User
+    participant CreateAPI as POST /events
+    participant StatusAPI as PATCH /status
+    participant BetAPI as POST /bets
+
+    Admin->>CreateAPI: 이벤트 생성
+    CreateAPI-->>Admin: 201 (READY)
+
+    User->>BetAPI: 베팅 시도 (READY 상태)
+    BetAPI-->>User: 409 ERR_013
+
+    Admin->>StatusAPI: READY → OPEN
+    StatusAPI-->>Admin: 200
+
+    User->>BetAPI: 베팅 (OPEN 상태)
+    BetAPI-->>User: 201
+```
+
+**검증**: READY에서 베팅 불가(409), OPEN에서만 베팅 가능(201)
+
+---
+
+#### I03. 베팅 → 정산 → 포인트 확인 (API 3개)
+
+```mermaid
+sequenceDiagram
+    participant User as User (10000P)
+    participant BetAPI as POST /bets
+    participant SettleAPI as POST /settle
+    participant GetUser as GET /users/me
+
+    User->>BetAPI: 베팅 1000P
+    BetAPI-->>User: 201 (잔액 9000P)
+
+    Note over SettleAPI: Admin이 정산 실행 (User 승리)
+
+    User->>GetUser: 내 정보 조회
+    GetUser-->>User: points: 11000P (배당 적용)
+```
+
+**검증**: 베팅 후 잔액 감소, 승리 시 배당금 지급
+
+---
+
+#### I04. 중복 베팅 방지 (API 2개)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant BetAPI as POST /bets
+
+    User->>BetAPI: 첫 번째 베팅
+    BetAPI-->>User: 201
+
+    User->>BetAPI: 같은 이벤트 재베팅
+    BetAPI-->>User: 409 ERR_014
+```
+
+**검증**: 동일 이벤트 중복 베팅 시 409 반환
+
+---
+
+#### I05. 이벤트 취소 → 환불 (API 2개)
+
+```mermaid
+sequenceDiagram
+    participant User as User (9000P)
+    participant StatusAPI as PATCH /status
+    participant GetUser as GET /users/me
+
+    Note over User: 이미 1000P 베팅한 상태
+
+    Note over StatusAPI: Admin이 CANCELLED로 변경
+
+    User->>GetUser: 내 정보 조회
+    GetUser-->>User: points: 10000P (환불됨)
+```
+
+**검증**: 이벤트 취소 시 베팅 포인트 전액 환불
+
+---
+
 | ID | 플로우 | 호출 API 수 | 검증 포인트 |
 |----|--------|------------|------------|
 | I01 | 회원가입→인증→로그인 | 5 | 인증 전 로그인 불가, 인증 후 가능 |
@@ -468,3 +617,71 @@ pytest snu_toto/tests/test_integration.py -v
 # 전체
 pytest snu_toto/tests/ -v
 ```
+
+---
+
+## ⚠️ 브랜치 충돌 현황 (팀원 공유용)
+
+> **작성일**: 2026-01-11
+
+### 현재 상황
+
+`feat/db-schema` 브랜치를 `main`에 머지할 때 **7개 파일에서 충돌** 발생
+
+### 충돌 파일 목록
+
+| 파일 | 충돌 원인 |
+|------|----------|
+| `pyproject.toml` | 양쪽에서 다른 패키지 추가 (redis vs 기타) |
+| `uv.lock` | 패키지 잠금 파일 불일치 |
+| `snu_toto/alembic/env.py` | DB 마이그레이션 설정 차이 |
+| `snu_toto/app/bets/models.py` | 모델 필드 정의 차이 |
+| `snu_toto/app/core/config.py` | 환경 변수 설정 차이 |
+| `snu_toto/app/events/models.py` | 이벤트 모델 관계 정의 차이 |
+| `snu_toto/app/users/models.py` | 소셜 로그인 필드 추가 방식 차이 |
+
+### 원인 분석
+
+```
+main
+ └─ feat/init-app (머지됨)
+     ├─ feat/db-schema (독자 개발 → models, alembic 수정)
+     └─ feat/signup → feat/login (머지됨 → auth, users 수정)
+```
+
+**feat/login과 feat/db-schema가 동일 파일을 각자 다르게 수정**
+
+### 임시 해결
+
+- `feat/login` 브랜치 머지 완료
+- `feat/db-schema`에서 **충돌 없는 파일만** 체크아웃:
+  - `events/repositories.py`
+  - `events/services.py`
+  - `users/repositories.py`
+  - `users/services.py`
+
+### 필요한 작업
+
+1. **models.py 통합**: feat/db-schema의 모델 정의를 현재 main에 수동 반영
+2. **config.py 통합**: 환경 변수 설정 머지
+3. **alembic 마이그레이션 재생성**: 통합된 모델로 새 마이그레이션 생성
+
+### 현재 테스트 가능 API
+
+| API | 상태 |
+|-----|------|
+| POST /api/users | ✅ |
+| POST /api/auth/login | ✅ |
+| POST /api/auth/verify-email/* | ✅ |
+| GET /api/auth/google/callback | ✅ |
+| GET /api/events | ✅ |
+| POST /api/events | ❌ 라우터 미구현 |
+| PATCH /api/events/{id}/status | ❌ 미구현 |
+| POST /api/events/{id}/bets | ❌ 미구현 |
+| POST /api/events/{id}/settle | ❌ 미구현 |
+
+기본 포맷을 베팅(이벤트)이 단순 승/패로 하고 추후에 다양한 포맷을 지원
+각 배팅 화면에서 댓글 기능 추가
+베팅 자체를 개설하는 주체를 어느 정도 점수나 포인트를 넘은(인증된 사람?)등
+포인트 활용 방안
+최종 발표 때의 각 팀을 두고 베팅에서 최우수는 어느 팀이 될지 선정 (3팀))

@@ -44,7 +44,7 @@ class EmailSendFailedException(SnutotoException):
     def __init__(self):
         super().__init__(
             status_code=500,
-            error_code="ERR_13",
+            error_code="ERR_013",
             error_msg="FAILED TO SEND EMAIL"
         )
 
@@ -65,20 +65,20 @@ class EmailVerificationRequiredException(SnutotoException):
             payload={"verification_token": verification_token}
         )
 
-class MissingCodeException(SnutotoException):
-    def __init__(self):
-        super().__init__(
-            status_code=400,
-            error_code="ERR_019",
-            error_msg="INVALID CALLBACK REQUEST"
-        )
-
 class GoogleAuthFailedException(SnutotoException):
     def __init__(self):
         super().__init__(
             status_code=400,
-            error_code="ERR_020",
+            error_code="ERR_019",
             error_msg="GOOGLE AUTH FAILED"
+        )
+
+class MissingCodeException(SnutotoException):
+    def __init__(self):
+        super().__init__(
+            status_code=400,
+            error_code="ERR_020",
+            error_msg="INVALID CALLBACK REQUEST"
         )
 
 class RateLimitException(SnutotoException):
