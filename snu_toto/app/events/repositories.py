@@ -39,5 +39,11 @@ class EventRepositories:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
-    
 
+    async def create_event(self, event: Event) -> Event:
+        """이벤트, 옵션, 이미지를 DB에 저장"""
+        self.session.add(event) # SQLAlchemy의 relationship 덕분에 Event 객체의 options와 images 리스트도 한 번에 저장
+        
+        await self.session.flush()
+        await self.session.refresh(event)
+        return event
