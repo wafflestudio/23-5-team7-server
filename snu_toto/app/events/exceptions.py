@@ -20,6 +20,14 @@ class DuplicateOptionNameError(SnutotoException):
     def __init__(self) -> None:
         super().__init__(status_code=409, error_code="ERR_028", error_msg="DUPLICATE OPTION NAME")
 
+class InvalidStatusTransitionError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=400, error_code="ERR_029", error_msg="INVALID STATUS TRANSITION")
+
+class NotAdminError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=403, error_code="ERR_030", error_msg="NOT ADMIN")
+
 # --- 이미지 관련 ---
 class ImageTooLargeError(SnutotoException):
     def __init__(self) -> None:

@@ -2,8 +2,9 @@ from typing import Annotated, Sequence, List
 import uuid
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from snu_toto.app.events.exceptions import EventNotFoundError
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
 from snu_toto.app.events.models import EventStatus, EventImage
@@ -47,3 +48,11 @@ class EventRepositories:
         await self.session.flush()
         await self.session.refresh(event)
         return event
+
+    async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
+        """이벤트의 상태를 업데이트"""
+        result = await self.session.execute(update(Event).where(Event.event_id == event_id).values(status=new_status))
+        
+        # rowcount를 통해 실제 업데이트된 행이 있는지 확인
+        if result.rowcount <= 0:
+            raise EventNotFoundError()

@@ -1,6 +1,6 @@
 import filetype
 from snu_toto.app.events.repositories import EventRepositories
-from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError
+from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError
 from fastapi import Depends, UploadFile
 from typing import Annotated, List
 from snu_toto.app.events.models import Event, EventImage, EventStatus, EventOption
@@ -161,3 +161,34 @@ class EventServices:
         """이벤트 목록 조회 (각 이벤트의 상세 정보 포함)"""
         events = await self.event_repositories.get_events(status)
         return [await self.get_event_details(event.event_id) for event in events]
+    
+    async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
+        """이벤트 상태 수동 변경 (관리자용)"""
+        
+        # 이벤트 존재 여부 확인
+        event = await self.event_repositories.get_event_by_id(event_id)
+        if not event:
+            raise EventNotFoundError()
+
+        # 상태 전이 규칙 검사
+        current_status = event.status
+        if current_status == new_status: # 동일한 상태로 변경하려는 경우 무시 (성공 처리)
+            return
+        allowed_map = {
+            EventStatus.READY: [EventStatus.OPEN, EventStatus.CANCELLED],
+            EventStatus.OPEN: [EventStatus.CLOSED, EventStatus.CANCELLED],
+            EventStatus.CLOSED: [EventStatus.CANCELLED],
+            EventStatus.SETTLED: [],     # 최종 상태
+            EventStatus.CANCELLED: []    # 최종 상태
+        }
+        if new_status not in allowed_map.get(current_status, []):
+            raise InvalidStatusTransitionError()
+
+        session = self.event_repositories.session
+
+        if not session.in_transaction():
+            async with session.begin():
+                await self.event_repositories.update_event_status(event_id, new_status)
+        else:
+            await self.event_repositories.update_event_status(event_id, new_status)
+            await session.flush() # 변경 사항을 현재 트랜잭션에 반영 (커밋은 호출자가 관리)
