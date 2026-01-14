@@ -63,6 +63,7 @@ class EventCreateResponse(BaseModel):
     description: Optional[str]
     status: EventStatus
     created_at: datetime
+    start_at: datetime
     end_at: datetime
     options: List[OptionCreateResponse]
 
