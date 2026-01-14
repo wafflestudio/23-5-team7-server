@@ -42,12 +42,12 @@ app.add_middleware(
 from .auth.router import auth_router
 from .users.router import users_router
 from .events.router import event_router
-# from .bets.router import bets_router
+from .bets.router import bet_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(event_router, prefix="/api/events", tags=["events"])
-# app.include_router(bets_router, prefix="/api/bets", tags=["bets"])
+app.include_router(bet_router, prefix="/api", tags=["bets"])
 
 
 # 커스텀 예외 핸들러

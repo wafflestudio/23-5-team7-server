@@ -1,6 +1,5 @@
 """
 SNU Toto 테스트 공통 픽스처 및 헬퍼 함수
-기존 브랜치 코드와 호환되도록 작성
 """
 from typing import AsyncGenerator
 import asyncio
@@ -14,6 +13,28 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 from httpx import AsyncClient, ASGITransport
+
+import os
+
+# 테스트 환경 변수 주입 (앱 임포트 전에 설정해야 함)
+os.environ["ENV"] = "test"
+os.environ.setdefault("DB_DIALECT", "mysql")
+os.environ.setdefault("DB_DRIVER", "aiomysql")
+os.environ.setdefault("DB_HOST", "localhost")
+os.environ.setdefault("DB_PORT", "3306")
+os.environ.setdefault("DB_USER", "unused_test_user")
+os.environ.setdefault("DB_PASSWORD", "unused_test_password")
+os.environ.setdefault("DB_DATABASE", "unused_test_db")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "dummy_client_id")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "dummy_client_secret")
+os.environ.setdefault("GOOGLE_REDIRECT_URI", "http://localhost:8000/callback")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("SMTP_HOST", "localhost")
+os.environ.setdefault("SMTP_PORT", "25")
+os.environ.setdefault("SMTP_USER", "user")
+os.environ.setdefault("SMTP_PASSWORD", "pass")
+os.environ.setdefault("ACCESS_TOKEN_SECRET", "access_secret")
+os.environ.setdefault("REFRESH_TOKEN_SECRET", "refresh_secret")
 
 from snu_toto.app.main import app
 from snu_toto.app.core.database import Base, get_db_session
@@ -29,6 +50,21 @@ def event_loop():
     loop = policy.new_event_loop()
     yield loop
     loop.close()
+
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlite3 import Connection as SQLite3Connection
+
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+    if isinstance(dbapi_connection, SQLite3Connection) or hasattr(dbapi_connection, "create_function"):
+        cursor = dbapi_connection.cursor()
+        # Foreign Key 제약조건 활성화
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+        
+        # MySQL chracter_length 호환 함수 등록
+        dbapi_connection.create_function("CHAR_LENGTH", 1, len)
 
 
 # =============================================================================
@@ -121,19 +157,53 @@ async def existing_user(async_client: AsyncClient, user_signup_data: dict) -> di
 
 
 @pytest_asyncio.fixture
-async def auth_token(async_client: AsyncClient, user_signup_data: dict) -> str:
-    """로그인 후 access_token 반환 (인증 완료된 유저 가정)"""
+async def auth_token(async_client: AsyncClient, user_signup_data: dict, db_session: AsyncSession) -> str:
+    """로그인 후 access_token 반환 (인증 완료된 유저)"""
     # 가입
     await async_client.post("/api/users", json=user_signup_data)
     
-    # 로그인 (이메일 인증 없이 테스트용)
+    # 인증 완료 처리
+    from snu_toto.app.users.models import User
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == user_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    await db_session.commit()
+    
+    # 로그인
     login_data = {
         "email": user_signup_data["email"],
         "password": user_signup_data["password"],
     }
+    return res.json().get("access_token", "")
+
+
+@pytest_asyncio.fixture
+async def admin_token(async_client: AsyncClient, admin_signup_data: dict, db_session: AsyncSession) -> str:
+    """관리자 로그인 후 access_token 반환"""
+    # 가입
+    await async_client.post("/api/users", json=admin_signup_data)
+    
+    # 인증 및 관리자 권한 부여
+    from snu_toto.app.users.models import User, UserRole
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == admin_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    user.role = UserRole.ADMIN
+    await db_session.commit()
+    
+    # 로그인
+    login_data = {
+        "email": admin_signup_data["email"],
+        "password": admin_signup_data["password"],
+    }
     res = await async_client.post("/api/auth/login", json=login_data)
-    data = res.json()
-    return data.get("access_token", "")
+    return res.json().get("access_token", "")
 
 
 @pytest_asyncio.fixture
