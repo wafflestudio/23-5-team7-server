@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -8,6 +9,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from snu_toto.app.core.database import engine
 from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.common.exceptions import SnutotoException, MissingRequiredFieldException, InvalidFormatException
+from snu_toto.app.events.schedular import auto_update_event_status
 from snu_toto.app.users import models as user_models
 from snu_toto.app.events import models as event_models
 from snu_toto.app.bets import models as bet_models
@@ -16,9 +18,13 @@ from snu_toto.app.bets import models as bet_models
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 앱 시작 시
+    task = asyncio.create_task(auto_update_event_status())
+
     yield
+
     # 앱 종료 시
     await engine.dispose()
+    task.cancel()
 
 
 app = FastAPI(

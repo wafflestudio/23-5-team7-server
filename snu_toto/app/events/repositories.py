@@ -56,3 +56,14 @@ class EventRepositories:
         # rowcount를 통해 실제 업데이트된 행이 있는지 확인
         if result.rowcount <= 0:
             raise EventNotFoundError()
+    
+    async def update_status_conditionally(self, event_id: str, target_status: EventStatus, expected_status: EventStatus) -> bool:
+        """기대하는 상태일 때만 목표 상태로 변경"""
+        result = await self.session.execute((
+            update(Event)
+            .where(Event.event_id == event_id)
+            .where(Event.status == expected_status)
+            .values(status=target_status)
+        ))
+        # 실제 업데이트된 행이 있으면 True, 없으면(상태가 이미 바뀌었거나 ID가 없으면) False 반환
+        return result.rowcount > 0
