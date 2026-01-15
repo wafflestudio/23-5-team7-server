@@ -1,15 +1,18 @@
 import filetype
+from redis.asyncio import Redis
 from snu_toto.app.events.repositories import EventRepositories
-from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError
+from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError
 from fastapi import Depends, UploadFile
 from typing import Annotated, List
 from snu_toto.app.events.models import Event, EventImage, EventStatus, EventOption
 from snu_toto.app.events.schemas import EventCreateRequest, EventDetailResponse, OptionResponse, ImageResponse
 from snu_toto.app.events.utils import s3_uploader
+from snu_toto.app.auth.dependencies import get_redis
 
 class EventServices:
-    def __init__(self, event_repositories: Annotated[EventRepositories, Depends()]):
+    def __init__(self, event_repositories: Annotated[EventRepositories, Depends()], redis: Annotated[Redis, Depends(get_redis)]):
         self.event_repositories = event_repositories
+        self.redis = redis
 
     async def create_event(
         self, 
@@ -54,6 +57,13 @@ class EventServices:
             created_event = await self._perform_create_event_logic(creator_id, data, image_urls)
             await session.flush() # 변경 사항을 DB에 반영하지만 최종 commit은 호출자에게 맡김
 
+        # Redis ZSET에 스케줄 등록
+        await self._add_to_event_scheduler(
+            created_event.event_id, 
+            created_event.start_at, 
+            created_event.end_at
+        )
+
         await session.refresh(
             created_event, 
             attribute_names=["options", "images"]
@@ -82,6 +92,16 @@ class EventServices:
 
         return await self.event_repositories.create_event(new_event)
 
+    async def _add_to_event_scheduler(self, event_id: str, start_at, end_at):
+        """Redis ZSET에 이벤트 시작/종료 시간 등록"""
+        # datetime을 timestamp로 변환
+        start_ts = int(start_at.timestamp())
+        end_ts = int(end_at.timestamp())
+        
+        # ZADD key score member
+        await self.redis.zadd("event:sched:open", {event_id: start_ts})
+        await self.redis.zadd("event:sched:close", {event_id: end_ts})
+
     def _validate_image_indices(self, data: EventCreateRequest, file_count: int):
         """이미지 인덱스가 파일 리스트의 범위를 벗어나는지 확인"""
         # 옵션 이미지 인덱스 검증
@@ -93,6 +113,18 @@ class EventServices:
         for img in data.images:
             if img.image_index >= file_count or img.image_index < 0:
                 raise ImageIndexOutOfBoundsError()
+    
+    async def update_event_status_auto(self, event_id: str, target_status: EventStatus, expected_status: EventStatus):
+        """자동 이벤트 상태 업데이트"""
+        session = self.event_repositories.session
+        
+        if not session.in_transaction():
+            async with session.begin():
+                return await self.event_repositories.update_status_conditionally(event_id, target_status, expected_status)
+        else:
+            success = await self.event_repositories.update_status_conditionally(event_id, target_status, expected_status)
+            await session.flush()
+            return success
 
     def get_option_details(
         self, 
@@ -161,3 +193,34 @@ class EventServices:
         """이벤트 목록 조회 (각 이벤트의 상세 정보 포함)"""
         events = await self.event_repositories.get_events(status)
         return [await self.get_event_details(event.event_id) for event in events]
+    
+    async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
+        """이벤트 상태 수동 변경 (관리자용)"""
+        
+        # 이벤트 존재 여부 확인
+        event = await self.event_repositories.get_event_by_id(event_id)
+        if not event:
+            raise EventNotFoundError()
+
+        # 상태 전이 규칙 검사
+        current_status = event.status
+        if current_status == new_status: # 동일한 상태로 변경하려는 경우 무시 (성공 처리)
+            return
+        allowed_map = {
+            EventStatus.READY: [EventStatus.OPEN, EventStatus.CANCELLED],
+            EventStatus.OPEN: [EventStatus.CLOSED, EventStatus.CANCELLED],
+            EventStatus.CLOSED: [EventStatus.CANCELLED],
+            EventStatus.SETTLED: [],     # 최종 상태
+            EventStatus.CANCELLED: []    # 최종 상태
+        }
+        if new_status not in allowed_map.get(current_status, []):
+            raise InvalidStatusTransitionError()
+
+        session = self.event_repositories.session
+
+        if not session.in_transaction():
+            async with session.begin():
+                await self.event_repositories.update_event_status(event_id, new_status)
+        else:
+            await self.event_repositories.update_event_status(event_id, new_status)
+            await session.flush() # 변경 사항을 현재 트랜잭션에 반영 (커밋은 호출자가 관리)
