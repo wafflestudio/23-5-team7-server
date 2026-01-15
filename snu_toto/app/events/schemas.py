@@ -96,6 +96,6 @@ class EventDetailResponse(BaseModel):
 
 class EventListResponse(BaseModel):
     """이벤트 목록 응답 (커서 페이지네이션)"""
-    events: List[EventDetailResponse] = Field(..., description="이벤트 목록")
-    next_cursor: Optional[str] = Field(None, description="다음 페이지를 위한 커서 (Base64 encoded)")
-    has_more: bool = Field(..., description="다음 페이지 존재 여부")
+    events: List[EventDetailResponse]
+    next_cursor: Optional[str] = Field(None)
+    has_more: bool
