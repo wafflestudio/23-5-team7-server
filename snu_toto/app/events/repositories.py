@@ -2,8 +2,9 @@ from typing import Annotated, Sequence, List
 import uuid
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from snu_toto.app.events.exceptions import EventNotFoundError
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
 from snu_toto.app.events.models import EventStatus, EventImage
@@ -39,5 +40,72 @@ class EventRepositories:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
-    
 
+    async def create_event(self, event: Event) -> Event:
+        """이벤트, 옵션, 이미지를 DB에 저장"""
+        self.session.add(event) # SQLAlchemy의 relationship 덕분에 Event 객체의 options와 images 리스트도 한 번에 저장
+        
+        await self.session.flush()
+        await self.session.refresh(event)
+        return event
+
+    async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
+        """이벤트의 상태를 업데이트"""
+        result = await self.session.execute(update(Event).where(Event.event_id == event_id).values(status=new_status))
+        
+        # rowcount를 통해 실제 업데이트된 행이 있는지 확인
+        if result.rowcount <= 0:
+            raise EventNotFoundError()
+    
+    async def update_status_conditionally(self, event_id: str, target_status: EventStatus, expected_status: EventStatus) -> bool:
+        """기대하는 상태일 때만 목표 상태로 변경"""
+        result = await self.session.execute((
+            update(Event)
+            .where(Event.event_id == event_id)
+            .where(Event.status == expected_status)
+            .values(status=target_status)
+        ))
+        # 실제 업데이트된 행이 있으면 True, 없으면(상태가 이미 바뀌었거나 ID가 없으면) False 반환
+        return result.rowcount > 0
+    
+    async def get_events_with_cursor(
+        self,
+        status: EventStatus | None = None,
+        cursor_end_at: str | None = None,
+        cursor_event_id: str | None = None,
+        limit: int = 10
+    ) -> tuple[List[Event], bool]:
+        """커서 기반 페이지네이션으로 이벤트 목록 조회 (마감 임박순)"""
+        from sqlalchemy import and_, or_
+        from datetime import datetime
+        
+        query = select(Event).order_by(Event.end_at.asc(), Event.event_id.asc())
+        
+        # 상태 필터링
+        if status:
+            query = query.where(Event.status == status)
+        
+        # 커서 기반 필터링 (end_at, event_id 복합 정렬)
+        if cursor_end_at and cursor_event_id:
+            cursor_dt = datetime.fromisoformat(cursor_end_at)
+            query = query.where(
+                or_(
+                    Event.end_at > cursor_dt,
+                    and_(
+                        Event.end_at == cursor_dt,
+                        Event.event_id > cursor_event_id
+                    )
+                )
+            )
+        
+        # limit + 1개를 가져와서 다음 페이지 존재 여부 확인
+        query = query.limit(limit + 1)
+        
+        result = await self.session.execute(query)
+        events = list(result.scalars().all())
+        
+        has_more = len(events) > limit
+        if has_more:
+            events = events[:limit]
+        
+        return events, has_more
