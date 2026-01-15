@@ -47,11 +47,3 @@ class SocialIdAlreadyExistsException(SnutotoException):
             error_code="ERR_018",
             error_msg="SOCIAL ID ALREADY EXISTS"
         )
-
-class ForbiddenException(SnutotoException):
-    def __init__(self):
-        super().__init__(
-            status_code=403,
-            error_code="ERR_030",
-            error_msg="NOT ADMIN"
-        )
