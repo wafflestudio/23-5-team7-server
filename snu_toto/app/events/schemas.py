@@ -93,3 +93,8 @@ class EventDetailResponse(BaseModel):
     end_at: datetime
     options: list[OptionResponse]
     images: list[ImageResponse]
+
+class EventListResponse(BaseModel):
+    events: list[EventDetailResponse]
+    next_cursor: str | None
+    has_more: bool
