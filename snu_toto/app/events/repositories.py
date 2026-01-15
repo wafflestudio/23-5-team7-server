@@ -1,5 +1,6 @@
-from typing import Annotated, Sequence, List
+from typing import Annotated, Sequence, List, Tuple
 import uuid
+from datetime import datetime
 
 from fastapi import Depends
 from sqlalchemy import select, update
@@ -40,6 +41,45 @@ class EventRepositories:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def get_events_with_cursor(
+        self,
+        status: EventStatus | None = None,
+        cursor_end_at: datetime | None = None,
+        cursor_event_id: str | None = None,
+        limit: int = 10
+    ) -> Tuple[List[Event], bool]:
+        """커서 기반 페이지네이션으로 이벤트 목록 조회 (마감 임박순)"""
+        query = select(Event)
+        
+        # 상태 필터링
+        if status:
+            query = query.where(Event.status == status)
+        
+        # 커서 조건 (end_at, event_id)
+        # 커서보다 나중에 마감되는 이벤트 or 같은 마감 시간이지만 event_id가 더 큰 이벤트
+        if cursor_end_at and cursor_event_id:
+            query = query.where(
+                (Event.end_at > cursor_end_at) |
+                ((Event.end_at == cursor_end_at) & (Event.event_id > cursor_event_id))
+            )
+        
+        # 정렬: end_at 오름차순, event_id 오름차순 (동일한 end_at 처리)
+        query = query.order_by(Event.end_at.asc(), Event.event_id.asc())
+        
+        # limit + 1 조회 (has_more 판단용)
+        query = query.limit(limit + 1)
+        
+        result = await self.session.execute(query)
+        events = list(result.scalars().all())
+        
+        # has_more 판단
+        has_more = len(events) > limit
+        if has_more:
+            events = events[:limit]  # 실제로는 limit 개만 반환
+        
+        return events, has_more
+
 
     async def create_event(self, event: Event) -> Event:
         """이벤트, 옵션, 이미지를 DB에 저장"""
