@@ -126,6 +126,89 @@ class EventServices:
             await session.flush()
             return success
 
+    async def create_event(
+        self, 
+        creator_id: str, 
+        data: EventCreateRequest, 
+        image_files: List[UploadFile]
+    ) -> Event:
+        """이벤트 생성"""
+        
+        # 이미지 인덱스 검증
+        self._validate_image_indices(data, len(image_files))
+        
+        # 이미지 형식/용량 검증
+        for file in image_files:
+            if file.size > 5 * 1024 * 1024: raise ImageTooLargeError()
+            # 파일 바이너리 헤더 검사
+            header = await file.read(2048)
+            await file.seek(0)
+            
+            kind = filetype.guess(header)
+            if kind is None or kind.mime not in ["image/jpeg", "image/png", "image/webp"]:
+                raise InvalidImageFormatError()
+
+        # S3 업로드 (병렬 업로드로 속도 향상)
+        import asyncio
+        try:
+            upload_tasks = [s3_uploader.upload_file(file) for file in image_files]
+            image_urls = await asyncio.gather(*upload_tasks)
+        except Exception:
+            raise ImageUploadFailedError()
+
+        # 객체 조립 및 트랜잭션 처리
+        session = self.event_repositories.session
+        
+        # 이미 트랜잭션이 진행 중인지 확인하여 중복 begin 방지
+        if not session.in_transaction():
+            async with session.begin():
+                created_event = await self._perform_create_event_logic(creator_id, data, image_urls)
+                # context manager (begin)에 의해 자동 commit/rollback 발생
+        else:
+            # 이미 트랜잭션이 시작된 경우
+            created_event = await self._perform_create_event_logic(creator_id, data, image_urls)
+            await session.flush() # 변경 사항을 DB에 반영하지만 최종 commit은 호출자에게 맡김
+
+        await session.refresh(
+            created_event, 
+            attribute_names=["options", "images"]
+        )
+        return created_event
+    
+    async def _perform_create_event_logic(self, creator_id, data, image_urls) -> Event:
+        # Event 객체 생성
+        new_event = Event(
+            creator_id=creator_id,
+            title=data.title,
+            description=data.description,
+            start_at=data.start_at,
+            end_at=data.end_at,
+            status=EventStatus.READY
+        )
+
+        # 옵션 연결
+        for idx, opt_in in enumerate(data.options):
+            url = image_urls[opt_in.option_image_index] if opt_in.option_image_index != -1 else None
+            new_event.options.append(EventOption(name=opt_in.name, order=idx, option_image_url=url))
+
+        # 이벤트 이미지 연결
+        for img_in in data.images:
+            new_event.images.append(EventImage(image_url=image_urls[img_in.image_index], display_order=img_in.image_index))
+
+        return await self.event_repositories.create_event(new_event)
+
+    def _validate_image_indices(self, data: EventCreateRequest, file_count: int):
+        """이미지 인덱스가 파일 리스트의 범위를 벗어나는지 확인"""
+        # 옵션 이미지 인덱스 검증
+        for opt in data.options:
+            if opt.option_image_index >= file_count or opt.option_image_index < -1:
+                raise ImageIndexOutOfBoundsError()
+        
+        # 이벤트 이미지 인덱스 검증
+        for img in data.images:
+            if img.image_index >= file_count or img.image_index < 0:
+                raise ImageIndexOutOfBoundsError()
+
     def get_option_details(
         self, 
         option: EventOption,

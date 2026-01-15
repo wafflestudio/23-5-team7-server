@@ -29,9 +29,11 @@ class AuthService:
         user = await self.user_repo.get_by_social_id("GOOGLE", social_id)
         if user:
             access_token = create_login_access_token(user.user_id)
+            refresh_token = create_refresh_token(user.user_id)
             return GoogleAuthResponse(
                 message="로그인 성공",
                 access_token=access_token,
+                refresh_token=refresh_token,
                 is_snu_verified=True, # 구글 소셜 로그인은 이메일 인증을 할 필요 없음
                 needs_signup=False
             )
