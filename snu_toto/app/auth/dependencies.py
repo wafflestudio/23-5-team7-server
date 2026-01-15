@@ -72,3 +72,40 @@ async def get_current_unverified_user(
         raise InvalidTokenException()
 
     return user
+
+#토큰 확인하여 인증된 유저 반환
+async def get_current_user(
+    token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db_session)
+):
+    if token_obj is None:
+        raise UnauthenticatedException()
+    
+    if token_obj.scheme.lower() != "bearer":
+        raise BadAuthHeaderException()
+
+    token = token_obj.credentials
+
+    try:
+        payload = jwt.decode(
+            token, 
+            AUTH_SETTINGS.ACCESS_TOKEN_SECRET, 
+            algorithms=["HS256"]
+        )
+        user_id: str = payload.get("sub")
+        purpose: str = payload.get("purpose")
+
+        # 토큰이 액세스 토큰인지 확인
+        if purpose != "access":
+            raise InvalidTokenException()
+
+    except JWTError:
+        raise InvalidTokenException()
+
+    # 토큰에 적힌 유저 ID가 DB에 있는지 확인
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    if not user:
+        raise InvalidTokenException()
+
+    return user
