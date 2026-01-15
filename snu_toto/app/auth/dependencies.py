@@ -7,6 +7,8 @@ from jose import jwt, JWTError
 
 from snu_toto.app.core.config import AUTH_SETTINGS, REDIS_SETTINGS
 from snu_toto.app.core.database import get_db_session
+from snu_toto.app.events.exceptions import NotAdminError
+from snu_toto.app.users.models import User, UserRole
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.auth.services import AuthService, VerificationService
 from snu_toto.app.auth.providers.google import GoogleAuthClient
@@ -72,3 +74,53 @@ async def get_current_unverified_user(
         raise InvalidTokenException()
 
     return user
+
+async def get_current_user(
+    token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db_session)
+) -> User:
+    """유효한 액세스 토큰을 확인하여 현재 로그인한 유저 객체 반환"""
+
+    if token_obj is None:
+        raise UnauthenticatedException()
+    
+    if token_obj.scheme.lower() != "bearer":
+        raise BadAuthHeaderException()
+
+    token = token_obj.credentials
+
+    try:
+        payload = jwt.decode(
+            token, 
+            AUTH_SETTINGS.ACCESS_TOKEN_SECRET, 
+            algorithms=["HS256"]
+        )
+        user_id: str = payload.get("sub")
+        purpose: str = payload.get("purpose")
+
+        # 토큰이 일반 액세스 전용인지 확인
+        if purpose != "access":
+            raise InvalidTokenException()
+
+        if user_id is None:
+            raise InvalidTokenException()
+
+    except JWTError:
+        raise InvalidTokenException()
+
+    # DB에서 유저 조회
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    
+    if not user:
+        raise InvalidTokenException()
+
+    return user
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """현재 로그인한 유저가 관리자인지 확인 후 객체 반환"""
+    if current_user.role != UserRole.ADMIN:
+        raise NotAdminError()
+    return current_user
