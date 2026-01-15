@@ -1,6 +1,8 @@
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime
+
+from snu_toto.app.events.models import EventStatus
 from snu_toto.app.events.exceptions import DuplicateOptionNameError, InvalidDateError, InvalidOptionCountError, InvalidOptionNameError
 from snu_toto.app.events.models import EventStatus
 
@@ -66,6 +68,9 @@ class EventCreateResponse(BaseModel):
     start_at: datetime
     end_at: datetime
     options: List[OptionCreateResponse]
+
+class EventStatusUpdateRequest(BaseModel):
+    status: EventStatus = Field(...)
 
 class OptionResponse(BaseModel):
     option_id: str
