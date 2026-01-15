@@ -101,6 +101,7 @@ class EmailSettings(BaseSettings):
 
 EMAIL_SETTINGS = EmailSettings()
 
+
 class AuthSettings(BaseSettings):
     ACCESS_TOKEN_SECRET: str
     REFRESH_TOKEN_SECRET: str
@@ -114,3 +115,18 @@ class AuthSettings(BaseSettings):
     )
 
 AUTH_SETTINGS = AuthSettings()
+
+
+class S3Settings(BaseSettings):
+    S3_AWS_ACCESS_KEY_ID: str
+    S3_AWS_SECRET_ACCESS_KEY: str
+    S3_AWS_REGION: str = "ap-northeast-2"  # 기본값: 서울 리전
+    S3_BUCKET_NAME: str
+
+    model_config = SettingsConfigDict(
+        case_sensitive=False,
+        env_file=SETTINGS.env_file,
+        extra='ignore'
+    )
+
+S3_SETTINGS = S3Settings()

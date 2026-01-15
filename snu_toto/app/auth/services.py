@@ -28,7 +28,7 @@ class AuthService:
         # 3. 기존 소셜 유저 확인
         user = await self.user_repo.get_by_social_id("GOOGLE", social_id)
         if user:
-            access_token = create_login_access_token(user.id)
+            access_token = create_login_access_token(user.user_id)
             return GoogleAuthResponse(
                 message="로그인 성공",
                 access_token=access_token,
