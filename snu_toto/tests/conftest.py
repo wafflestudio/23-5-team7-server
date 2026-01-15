@@ -35,6 +35,10 @@ os.environ.setdefault("SMTP_USER", "user")
 os.environ.setdefault("SMTP_PASSWORD", "pass")
 os.environ.setdefault("ACCESS_TOKEN_SECRET", "access_secret")
 os.environ.setdefault("REFRESH_TOKEN_SECRET", "refresh_secret")
+os.environ.setdefault("S3_AWS_ACCESS_KEY_ID", "pass")
+os.environ.setdefault("S3_AWS_SECRET_ACCESS_KEY", "pass")
+os.environ.setdefault("S3_AWS_REGION", "pass")
+os.environ.setdefault("S3_BUCKET_NAME", "pass")
 
 from snu_toto.app.main import app
 from snu_toto.app.core.database import Base, get_db_session
