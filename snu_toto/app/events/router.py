@@ -8,7 +8,7 @@ from snu_toto.app.events.models import EventStatus
 from snu_toto.app.events.utils import parse_event_data
 from snu_toto.app.users.models import User
 from snu_toto.app.events.services import EventServices
-from snu_toto.app.events.schemas import EventCreateRequest, EventCreateResponse, EventDetailResponse, EventStatusUpdateRequest
+from snu_toto.app.events.schemas import EventCreateRequest, EventCreateResponse, EventDetailResponse, EventSettleRequest, EventSettleResponse, EventStatusUpdateRequest, WinnerOptionDetail
 from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user
 
 event_router = APIRouter()
@@ -76,3 +76,25 @@ async def get_event_details(
     """이벤트 상세 조회 API"""
     event_details = await event_service.get_event_details(event_id)
     return event_details
+
+@event_router.post("/{event_id}/settle", status_code=200)
+async def settle_event(
+    event_id: str,
+    payload: EventSettleRequest,
+    service: Annotated[EventServices, Depends(get_event_service)],
+    admin: Annotated[User, Depends(get_current_admin_user)]
+) -> EventSettleResponse:
+    """이벤트를 정산"""
+
+    event = await service.settle_event(event_id, payload.winner_option_ids)
+    
+    winners = [
+        WinnerOptionDetail(option_id=opt.option_id, name=opt.name)
+        for opt in event.options if opt.is_winner
+    ]
+    
+    return EventSettleResponse(
+        event_id=event.event_id,
+        status=event.status,
+        winner=winners
+    )
