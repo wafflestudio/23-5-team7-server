@@ -1,11 +1,13 @@
 import filetype
+import base64
 from redis.asyncio import Redis
 from snu_toto.app.events.repositories import EventRepositories
-from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError
+from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError, InvalidCursorError
 from fastapi import Depends, UploadFile
 from typing import Annotated, List
+from datetime import datetime
 from snu_toto.app.events.models import Event, EventImage, EventStatus, EventOption
-from snu_toto.app.events.schemas import EventCreateRequest, EventDetailResponse, OptionResponse, ImageResponse
+from snu_toto.app.events.schemas import EventCreateRequest, EventDetailResponse, EventListResponse, OptionResponse, ImageResponse
 from snu_toto.app.events.utils import s3_uploader
 from snu_toto.app.auth.dependencies import get_redis
 
@@ -255,8 +257,7 @@ class EventServices:
         # 이미지 응답 생성
         image_responses = [
             ImageResponse(
-                image_url=image.image_url,
-                display_order=image.display_order
+                image_url=image.image_url
             )
             for image in images
         ]
@@ -276,6 +277,64 @@ class EventServices:
         """이벤트 목록 조회 (각 이벤트의 상세 정보 포함)"""
         events = await self.event_repositories.get_events(status)
         return [await self.get_event_details(event.event_id) for event in events]
+    
+    def _encode_cursor(self, end_at: datetime, event_id: str) -> str:
+        """커서를 Base64로 인코딩"""
+        cursor_str = f"{end_at.isoformat()}|{event_id}"
+        return base64.b64encode(cursor_str.encode()).decode()
+    
+    def _decode_cursor(self, cursor: str) -> tuple[datetime, str]:
+        """Base64 커서를 디코딩하여 end_at과 event_id 반환"""
+        try:
+            decoded = base64.b64decode(cursor.encode()).decode()
+            end_at_str, event_id = decoded.split("|")
+            end_at = datetime.fromisoformat(end_at_str)
+            return end_at, event_id
+        except Exception:
+            raise InvalidCursorError()
+    
+    async def get_events_paginated(
+        self,
+        status: EventStatus | None = None,
+        cursor: str | None = None,
+        limit: int = 10
+    ) -> EventListResponse:
+        """커서 기반 페이지네이션으로 이벤트 목록 조회"""
+        
+        # 커서 디코딩
+        cursor_end_at = None
+        cursor_event_id = None
+        if cursor:
+            cursor_end_at, cursor_event_id = self._decode_cursor(cursor)
+            
+            # 커서로 전달된 이벤트가 존재하는지 확인
+            event = await self.event_repositories.get_event_by_id(cursor_event_id)
+            if not event:
+                raise InvalidCursorError()
+        
+        # 이벤트 목록 조회
+        events, has_more = await self.event_repositories.get_events_with_cursor(
+            status=status,
+            cursor_end_at=cursor_end_at,
+            cursor_event_id=cursor_event_id,
+            limit=limit
+        )
+        
+        # 이벤트 상세 정보 생성
+        event_details = [await self.get_event_details(event.event_id) for event in events]
+        
+        # next_cursor 생성
+        next_cursor = None
+        if has_more and events:
+            last_event = events[-1]
+            next_cursor = self._encode_cursor(last_event.end_at, last_event.event_id)
+        
+        return EventListResponse(
+            events=event_details,
+            next_cursor=next_cursor,
+            has_more=has_more
+        )
+
     
     async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
         """이벤트 상태 수동 변경 (관리자용)"""

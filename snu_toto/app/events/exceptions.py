@@ -48,3 +48,11 @@ class ImageIndexOutOfBoundsError(SnutotoException):
 class InvalidImageFormatError(SnutotoException):
     def __init__(self) -> None:
         super().__init__(status_code=415, error_code="ERR_035", error_msg="INVALID IMAGE FORMAT")
+
+class OutOfRangeError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=422, error_code="ERR_036", error_msg="OUT_OF_RANGE")
+
+class InvalidCursorError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=404, error_code="ERR_037", error_msg="INVALID_CURSOR")
