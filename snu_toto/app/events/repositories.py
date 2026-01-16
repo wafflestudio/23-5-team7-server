@@ -5,6 +5,8 @@ from datetime import datetime
 from fastapi import Depends
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from snu_toto.app.bets.models import Bet
 from snu_toto.app.events.exceptions import EventNotFoundError
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
@@ -107,3 +109,16 @@ class EventRepositories:
         ))
         # 실제 업데이트된 행이 있으면 True, 없으면(상태가 이미 바뀌었거나 ID가 없으면) False 반환
         return result.rowcount > 0
+    
+    async def get_event_for_settlement(self, event_id: str) -> Event | None:
+        """정산을 위해 이벤트, 옵션, 베팅 내역, 베팅한 유저 정보를 모두 로드"""
+        stmt = (
+            select(Event)
+            .where(Event.event_id == event_id)
+            .options(
+                selectinload(Event.options),
+                selectinload(Event.bets).selectinload(Bet.user) # 베팅한 유저까지 로드
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

@@ -1,8 +1,9 @@
 import filetype
 import base64
 from redis.asyncio import Redis
+from snu_toto.app.bets.settlement.engine import SettlementEngine
 from snu_toto.app.events.repositories import EventRepositories
-from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError, InvalidCursorError
+from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError, InvalidWinnerOptionError, NotClosedEventError, InvalidCursorError
 from fastapi import Depends, UploadFile
 from typing import Annotated, List
 from datetime import datetime
@@ -366,3 +367,36 @@ class EventServices:
         else:
             await self.event_repositories.update_event_status(event_id, new_status)
             await session.flush() # 변경 사항을 현재 트랜잭션에 반영 (커밋은 호출자가 관리)
+    
+    async def settle_event(self, event_id: str, winner_option_ids: List[str]) -> Event:
+        """이벤트 결과 확정 및 포인트 정산 실행"""
+        session = self.event_repositories.session
+
+        # 정산용 데이터 풀 로드 (Options + Bets + Users)
+        event = await self.event_repositories.get_event_for_settlement(event_id)
+        if not event:
+            raise EventNotFoundError()
+
+        # 이벤트 상태 검증
+        if event.status != EventStatus.CLOSED:
+            raise NotClosedEventError()
+
+        valid_option_ids = {opt.option_id for opt in event.options}
+        for win_id in winner_option_ids:
+            if win_id not in valid_option_ids:
+                raise InvalidWinnerOptionError()
+            
+        # 정산 엔진 실행 (트랜잭션 보장)
+        engine = SettlementEngine(session)
+        
+        async def _do_settle():
+            await engine.run(event, winner_option_ids)
+            return event
+
+        if not session.in_transaction():
+            async with session.begin():
+                return await _do_settle()
+        else:
+            result = await _do_settle()
+            await session.flush()
+            return result

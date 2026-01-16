@@ -28,6 +28,14 @@ class NotAdminError(SnutotoException):
     def __init__(self) -> None:
         super().__init__(status_code=403, error_code="ERR_030", error_msg="NOT ADMIN")
 
+class InvalidWinnerOptionError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=400, error_code="ERR_031", error_msg="INVALID WINNER OPTION")
+
+class NotClosedEventError(SnutotoException):
+    def __init__(self) -> None:
+        super().__init__(status_code=400, error_code="ERR_032", error_msg="NOT CLOSED")
+
 # --- 이미지 관련 ---
 class ImageTooLargeError(SnutotoException):
     def __init__(self) -> None:
