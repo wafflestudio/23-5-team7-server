@@ -1,3 +1,4 @@
+from urllib.parse import urlencode
 from fastapi import APIRouter, Depends, Query, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,9 +16,6 @@ from snu_toto.app.auth.exceptions import (
     RateLimitException,
     InvalidCodeException,
 )
-from snu_toto.app.users.exceptions import EmailAlreadyExistsException, OnlySnuEmailAllowedException
-
-
 
 auth_router = APIRouter()
 
