@@ -21,12 +21,6 @@ async def reset_database(db: AsyncSession = Depends(get_db_session)):
     
     주의: 프로덕션 환경에서는 사용하지 마세요!
     """
-    # 프로덕션 환경 체크
-    if SETTINGS.is_prod:
-        raise HTTPException(
-            status_code=403,
-            detail="이 엔드포인트는 프로덕션 환경에서 사용할 수 없습니다."
-        )
     
     try:
         # 모든 테이블 삭제
@@ -59,13 +53,6 @@ async def seed_test_data(db: AsyncSession = Depends(get_db_session)):
     
     주의: 프로덕션 환경에서는 사용하지 마세요!
     """
-    # 프로덕션 환경 체크
-    if SETTINGS.is_prod:
-        raise HTTPException(
-            status_code=403,
-            detail="이 엔드포인트는 프로덕션 환경에서 사용할 수 없습니다."
-        )
-    
     try:
         # 1. 사용자 생성
         user_ids = await create_test_users(db)
@@ -112,12 +99,6 @@ async def reset_and_seed_database(db: AsyncSession = Depends(get_db_session)):
     
     주의: 프로덕션 환경에서는 사용하지 마세요!
     """
-    # 프로덕션 환경 체크
-    if SETTINGS.is_prod:
-        raise HTTPException(
-            status_code=403,
-            detail="이 엔드포인트는 프로덕션 환경에서 사용할 수 없습니다."
-        )
     
     try:
         # 1. DB 초기화
