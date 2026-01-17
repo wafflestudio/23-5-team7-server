@@ -35,10 +35,17 @@ app = FastAPI(
     redirect_slashes=False
 )
 
+ORIGINS = [
+    "https://d55bqrug1d7zs.cloudfront.net",  # 운영 환경
+    "http://localhost:3000",                # React 로컬 기본값
+    "http://localhost:5173",                # Vite 로컬 기본값
+    "http://127.0.0.1:3000",
+]
+
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://d55bqrug1d7zs.cloudfront.net"], # 프론트 주소 명시
+    allow_origins=ORIGINS
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
