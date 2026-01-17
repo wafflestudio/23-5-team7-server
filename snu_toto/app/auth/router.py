@@ -60,29 +60,14 @@ async def google_callback(
                 "social_type": auth_result.social_type
             })
 
+        if not auth_result.needs_signup:
+           params.update({
+                "access_token": auth_result.access_token,
+                "refresh_token": auth_result.refresh_token
+            }) 
+
         query_string = urlencode(params)
         response = RedirectResponse(url=f"{FRONTEND_URL}?{query_string}")
-
-        # 쿠키 설정 (기존 유저인 경우에만 토큰 발급)
-        if not auth_result.needs_signup and auth_result.access_token:
-            response.set_cookie(
-                key="access_token",
-                value=auth_result.access_token,
-                httponly=True, # 자바스크립트 접근 차단
-                secure=True,  # 로컬 테스트 시 False로 변경
-                samesite="none",
-                path="/",
-                max_age=AUTH_SETTINGS.SHORT_SESSION_LIFESPAN * 60
-            )
-            response.set_cookie(
-                key="refresh_token",
-                value=auth_result.refresh_token,
-                httponly=True,
-                secure=True,
-                samesite="none",
-                path="/",
-                max_age=AUTH_SETTINGS.LONG_SESSION_LIFESPAN * 60
-            )
         
         return response
 
