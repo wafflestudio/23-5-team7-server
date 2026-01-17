@@ -40,6 +40,7 @@ ORIGINS = [
     "http://localhost:3000",                # React 로컬 기본값
     "http://localhost:5173",                # Vite 로컬 기본값
     "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
 ]
 
 # CORS 설정
