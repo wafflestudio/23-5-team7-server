@@ -13,7 +13,7 @@ from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_u
 
 event_router = APIRouter()
 
-@event_router.post("/", status_code=201)
+@event_router.post("", status_code=201)
 async def create_event(
     request: Request,
     data: Annotated[str, Form(...)], # JSON 데이터 문자열
@@ -59,7 +59,7 @@ async def update_event_status(
     await service.update_event_status(event_id, payload.status)
     return {"message": "상태가 성공적으로 변경되었습니다."}
 
-@event_router.get("/", status_code=200)
+@event_router.get("", status_code=200)
 async def get_events(
     event_service: Annotated[EventServices, Depends()],
     status: EventStatus | None = Query(None),

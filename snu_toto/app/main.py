@@ -31,7 +31,8 @@ app = FastAPI(
     title="SNU-TOTO API",
     description="이벤트 베팅 서비스",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False
 )
 
 # CORS 설정
