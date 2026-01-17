@@ -13,7 +13,7 @@ from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_u
 
 event_router = APIRouter()
 
-@event_router.post("/", status_code=201)
+@event_router.post("", status_code=201)
 async def create_event(
     request: Request,
     data: Annotated[str, Form(...)], # JSON 데이터 문자열
