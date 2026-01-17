@@ -58,12 +58,13 @@ from .auth.router import auth_router
 from .users.router import users_router
 from .events.router import event_router
 from .bets.router import bet_router
+from .admin.router import admin_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(event_router, prefix="/api/events", tags=["events"])
 app.include_router(bet_router, prefix="/api", tags=["bets"])
-
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 # 커스텀 예외 핸들러
 @app.exception_handler(SnutotoException)
