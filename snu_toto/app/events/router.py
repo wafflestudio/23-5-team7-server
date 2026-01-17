@@ -59,7 +59,7 @@ async def update_event_status(
     await service.update_event_status(event_id, payload.status)
     return {"message": "상태가 성공적으로 변경되었습니다."}
 
-@event_router.get("/", status_code=200)
+@event_router.get("", status_code=200)
 async def get_events(
     event_service: Annotated[EventServices, Depends()],
     status: EventStatus | None = Query(None),
