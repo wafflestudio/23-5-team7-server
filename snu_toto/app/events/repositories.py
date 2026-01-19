@@ -1,9 +1,12 @@
-from typing import Annotated, Sequence, List
+from typing import Annotated, Sequence, List, Tuple
 import uuid
+from datetime import datetime
 
 from fastapi import Depends
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from snu_toto.app.bets.models import Bet
 from snu_toto.app.events.exceptions import EventNotFoundError
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
@@ -41,6 +44,45 @@ class EventRepositories:
         result = await self.session.execute(query)
         return list(result.scalars().all())
 
+    async def get_events_with_cursor(
+        self,
+        status: EventStatus | None = None,
+        cursor_end_at: datetime | None = None,
+        cursor_event_id: str | None = None,
+        limit: int = 10
+    ) -> Tuple[List[Event], bool]:
+        """커서 기반 페이지네이션으로 이벤트 목록 조회 (마감 임박순)"""
+        query = select(Event)
+        
+        # 상태 필터링
+        if status:
+            query = query.where(Event.status == status)
+        
+        # 커서 조건 (end_at, event_id)
+        # 커서보다 나중에 마감되는 이벤트 or 같은 마감 시간이지만 event_id가 더 큰 이벤트
+        if cursor_end_at and cursor_event_id:
+            query = query.where(
+                (Event.end_at > cursor_end_at) |
+                ((Event.end_at == cursor_end_at) & (Event.event_id > cursor_event_id))
+            )
+        
+        # 정렬: end_at 오름차순, event_id 오름차순 (동일한 end_at 처리)
+        query = query.order_by(Event.end_at.asc(), Event.event_id.asc())
+        
+        # limit + 1 조회 (has_more 판단용)
+        query = query.limit(limit + 1)
+        
+        result = await self.session.execute(query)
+        events = list(result.scalars().all())
+        
+        # has_more 판단
+        has_more = len(events) > limit
+        if has_more:
+            events = events[:limit]  # 실제로는 limit 개만 반환
+        
+        return events, has_more
+
+
     async def create_event(self, event: Event) -> Event:
         """이벤트, 옵션, 이미지를 DB에 저장"""
         self.session.add(event) # SQLAlchemy의 relationship 덕분에 Event 객체의 options와 images 리스트도 한 번에 저장
@@ -67,3 +109,16 @@ class EventRepositories:
         ))
         # 실제 업데이트된 행이 있으면 True, 없으면(상태가 이미 바뀌었거나 ID가 없으면) False 반환
         return result.rowcount > 0
+    
+    async def get_event_for_settlement(self, event_id: str) -> Event | None:
+        """정산을 위해 이벤트, 옵션, 베팅 내역, 베팅한 유저 정보를 모두 로드"""
+        stmt = (
+            select(Event)
+            .where(Event.event_id == event_id)
+            .options(
+                selectinload(Event.options),
+                selectinload(Event.bets).selectinload(Bet.user) # 베팅한 유저까지 로드
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()

@@ -93,3 +93,22 @@ class EventDetailResponse(BaseModel):
     end_at: datetime
     options: list[OptionResponse]
     images: list[ImageResponse]
+
+class EventListResponse(BaseModel):
+    events: list[EventDetailResponse]
+    next_cursor: str | None
+    has_more: bool
+    
+class EventSettleRequest(BaseModel):
+    winner_option_ids: List[str] = Field(...)
+
+class WinnerOptionDetail(BaseModel):
+    option_id: str
+    name: str
+
+class EventSettleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    event_id: str
+    status: EventStatus # 항상 SETTLED
+    winner: List[WinnerOptionDetail]

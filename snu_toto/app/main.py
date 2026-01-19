@@ -31,13 +31,22 @@ app = FastAPI(
     title="SNU-TOTO API",
     description="이벤트 베팅 서비스",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False
 )
+
+ORIGINS = [
+    "https://d55bqrug1d7zs.cloudfront.net",  # 운영 환경
+    "http://localhost:3000",                # React 로컬 기본값
+    "http://localhost:5173",                # Vite 로컬 기본값
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+]
 
 # CORS 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 프로덕션에서는 특정 도메인으로 제한
+    allow_origins=ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,13 +57,14 @@ app.add_middleware(
 from .auth.router import auth_router
 from .users.router import users_router
 from .events.router import event_router
-# from .bets.router import bet_router
+from .bets.router import bet_router
+from .admin.router import admin_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(event_router, prefix="/api/events", tags=["events"])
-# app.include_router(bet_router, prefix="/api", tags=["bets"])
-
+app.include_router(bet_router, prefix="/api", tags=["bets"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 # 커스텀 예외 핸들러
 @app.exception_handler(SnutotoException)
@@ -81,7 +91,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             raise MissingRequiredFieldException()
 
         # 형식 및 길이 위반(ERR_002)
-        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum"]:
+        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum", "list_type", "string_type"]:
             raise InvalidFormatException()
         
     return await request_validation_exception_handler(request, exc)
