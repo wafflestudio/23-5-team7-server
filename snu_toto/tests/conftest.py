@@ -181,6 +181,7 @@ async def auth_token(async_client: AsyncClient, user_signup_data: dict, db_sessi
         "email": user_signup_data["email"],
         "password": user_signup_data["password"],
     }
+    res = await async_client.post("/api/auth/login", json=login_data)
     return res.json().get("access_token", "")
 
 
