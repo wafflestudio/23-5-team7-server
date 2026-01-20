@@ -1,6 +1,6 @@
 from typing import Annotated, List, Optional
 from fastapi import Depends
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.core.database import get_db_session
@@ -86,3 +86,45 @@ class BetRepositories:
             .with_for_update() # 포인트를 수정하므로 락을 겁니다.
         )
         return result.scalar_one_or_none()
+
+    async def get_event_summary_for_admin(self, event_id: str):
+        """관리자용 이벤트 베팅 요약 조회"""
+        # 해당 이벤트의 총 베팅 수와 총 금액을 한 번에 계산
+        stmt = (
+            select(
+                func.count(Bet.bet_id).label("total_count"),
+                func.sum(Bet.amount).label("total_amount")
+            )
+            .where(Bet.event_id == event_id)
+        )
+        result = await self.session.execute(stmt)
+        row = result.fetchone()
+        
+        return {
+            "total_bet_count": row.total_count or 0,
+            "total_bet_amount": int(row.total_amount or 0)
+        }
+
+    async def get_bets_by_event_paginated(
+        self, 
+        event_id: str, 
+        page: int, 
+        limit: int
+    ) -> List[Bet]:
+        """특정 이벤트의 베팅 내역을 유저/옵션 정보와 함께 페이징 조회"""
+        offset = (page - 1) * limit
+        
+        stmt = (
+            select(Bet)
+            .where(Bet.event_id == event_id)
+            .options(
+                selectinload(Bet.user),    # 유저 정보 조인
+                selectinload(Bet.option)   # 옵션 정보 조인
+            )
+            .order_by(Bet.created_at.desc()) # 최신순 정렬
+            .offset(offset)
+            .limit(limit)
+        )
+        
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
