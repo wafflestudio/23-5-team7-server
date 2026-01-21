@@ -11,6 +11,7 @@ from snu_toto.app.events.models import Event, EventImage, EventStatus, EventOpti
 from snu_toto.app.events.schemas import EventCreateRequest, EventDetailResponse, EventListResponse, OptionResponse, ImageResponse
 from snu_toto.app.events.utils import s3_uploader
 from snu_toto.app.auth.dependencies import get_redis
+from snu_toto.app.events.websocket import manager
 
 class EventServices:
     def __init__(self, event_repositories: Annotated[EventRepositories, Depends()], redis: Annotated[Redis, Depends(get_redis)]):
@@ -400,3 +401,23 @@ class EventServices:
             result = await _do_settle()
             await session.flush()
             return result
+
+    async def update_odds_and_broadcast(self, event_id: str):
+        """배당률 업데이트 및 실시간 브로드캐스트"""
+        # 배당률 계산
+        updated_event = await self.get_event_details(event_id)
+        
+        # WebSocket으로 즉시 브로드캐스트
+        odds_data = {
+            "type": "odds_update",
+            "event_id": event_id,
+            "options": [
+                {
+                    "option_id": opt.option_id,
+                    "odds": opt.odds
+                }
+                for opt in updated_event.options
+            ]
+        }
+        
+        await manager.broadcast_to_event(event_id, odds_data)
