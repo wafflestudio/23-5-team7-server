@@ -1,15 +1,16 @@
 from typing import Annotated, List
-from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile, WebSocket
 from pydantic import ValidationError
 from snu_toto.app.common.exceptions import InvalidFormatException, SnutotoException
 from snu_toto.app.events.dependencies import get_event_service
-from snu_toto.app.events.exceptions import InvalidContentTypeError, OutOfRangeError
+from snu_toto.app.events.exceptions import InvalidContentTypeError, OutOfRangeError, EventNotFoundError
 from snu_toto.app.events.models import EventStatus
 from snu_toto.app.events.utils import parse_event_data
 from snu_toto.app.users.models import User
 from snu_toto.app.events.services import EventServices
 from snu_toto.app.events.schemas import EventCreateRequest, EventCreateResponse, EventDetailResponse, EventListResponse, EventSettleRequest, EventSettleResponse, EventStatusUpdateRequest, WinnerOptionDetail
 from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user
+from snu_toto.app.events.websocket import manager
 
 event_router = APIRouter()
 
@@ -108,3 +109,58 @@ async def settle_event(
         status=event.status,
         winner=winners
     )
+
+@event_router.websocket("/ws/{event_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    event_id: str,
+    event_service: EventServices = Depends(get_event_service)
+):
+    """특정 이벤트의 실시간 배당률 업데이트를 위한 WebSocket 엔드포인트"""
+
+        # 먼저 연결 수락
+    await manager.connect(websocket, event_id)
+    
+    try:
+        # 이벤트 검증
+        event_details = await event_service.get_event_details(event_id)
+    
+    # WebSocket 에러는 HTTP 에러와 다른 프로토콜이므로 따로 분리
+    except EventNotFoundError:
+        # 3. 연결된 상태에서 종료 → 1008 정상 전송
+        await websocket.close(code=1008, reason="EVENT NOT FOUND")
+        manager.disconnect(websocket, event_id)
+        return
+    except Exception as e:
+        print(f"WebSocket Handshake Error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        await websocket.close(code=1011, reason="Internal server error")
+        manager.disconnect(websocket, event_id)
+        return
+
+    try:
+        initial_data = {
+            "type": "initial",
+            "event_id": event_id,
+            "options": [
+                {
+                    "option_id": opt.option_id,
+                    "name": opt.name,
+                    "odds": opt.odds
+                }
+                for opt in event_details.options
+            ]
+        }
+        await websocket.send_json(initial_data)
+        
+        # 연결 유지 (클라이언트로부터 메시지는 받지 않음, heartbeat용
+        while True:
+            await websocket.receive_text()
+    
+    except Exception as e:
+        print(f"WebSocket Runtime Error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+    finally:
+        manager.disconnect(websocket, event_id)
