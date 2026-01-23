@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 from pydantic import BaseModel, Field
 from snu_toto.app.bets.models import BetStatus
 
@@ -15,3 +16,37 @@ class BetCreateResponse(BaseModel):
     bet_amount: int
     created_at: datetime
     status: BetStatus
+
+class AdminBetUserResponse(BaseModel):
+    user_id: str
+    email: str
+    nickname: str
+
+class AdminBetOptionResponse(BaseModel):
+    option_id: str
+    name: str
+
+class AdminBetResponse(BaseModel):
+    bet_id: str
+    user: AdminBetUserResponse
+    selected_option: AdminBetOptionResponse
+    amount: int
+    status: BetStatus
+    created_at: datetime
+
+class AdminEventSummary(BaseModel):
+    event_id: str
+    title: str
+    total_bet_count: int
+    total_bet_amount: int
+
+class PaginationInfo(BaseModel):
+    total: int
+    current_page: int
+    limit: int
+    total_pages: int
+
+class AdminBetListResponse(BaseModel):
+    event_info: AdminEventSummary
+    bets: List[AdminBetResponse]
+    pagination: PaginationInfo

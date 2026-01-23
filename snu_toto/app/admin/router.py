@@ -1,6 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from snu_toto.app.admin.services import AdminServices
+from snu_toto.app.auth.dependencies import get_current_admin_user
+from snu_toto.app.bets.schemas import AdminBetListResponse
 from snu_toto.app.core.database import get_db_session, engine, Base
 from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.users.models import User
@@ -13,6 +17,25 @@ from .seed_test_data import create_test_users, create_test_events, create_test_b
 
 admin_router = APIRouter()
 
+
+@admin_router.get("/events/{event_id}/bets", status_code=200)
+async def get_event_bets_for_admin(
+    event_id: str,
+    page: Annotated[int, Query(ge=1)] = 1,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    admin_service: AdminServices = Depends(),
+    current_admin: User = Depends(get_current_admin_user)
+)->AdminBetListResponse:
+    """[관리자용] 특정 이벤트의 전체 베팅 조회"""
+    return await admin_service.get_event_bets_for_admin(
+        event_id=event_id,
+        page=page,
+        limit=limit
+    )
+
+################################################################
+############# DB 초기화 및 테스트 데이터 생성 관련 코드 ############# 
+################################################################
 
 @admin_router.post("/reset-database")
 async def reset_database(db: AsyncSession = Depends(get_db_session)):
