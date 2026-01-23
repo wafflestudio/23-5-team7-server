@@ -10,7 +10,7 @@ from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.users.models import User
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.bets.models import Bet
-from snu_toto.app.users.schemas import UserAdminResponse, UserRoleUpdateRequest
+from snu_toto.app.users.schemas import UserAdminResponse, UserRoleUpdateRequest, UserSuspendRequest, UserSuspendResponse
 
 # seed 함수들 import
 from .seed_test_data import create_test_users, create_test_events, create_test_bets
@@ -43,6 +43,20 @@ async def update_user_role(
 )->UserAdminResponse:
     """[관리자용] 유저 권한 변경"""
     return await admin_service.update_user_role(
+        current_admin_id=current_admin.user_id,
+        target_user_id=user_id,
+        data=payload
+    )
+
+@admin_router.post("/users/{user_id}/suspend", status_code=200)
+async def suspend_user(
+    user_id: str,
+    payload: UserSuspendRequest,
+    admin_service: AdminServices = Depends(),
+    current_admin: User = Depends(get_current_admin_user)
+)->UserSuspendResponse:
+    """[관리자용] 유저 이용 정지"""
+    return await admin_service.suspend_user(
         current_admin_id=current_admin.user_id,
         target_user_id=user_id,
         data=payload

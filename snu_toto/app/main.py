@@ -91,7 +91,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             raise MissingRequiredFieldException()
 
         # 형식 및 길이 위반(ERR_002)
-        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum", "list_type", "string_type"]:
+        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum", "list_type", "string_type", "int_parsing", "int_from_float", "greater_than_equal"]:
             raise InvalidFormatException()
         
     return await request_validation_exception_handler(request, exc)

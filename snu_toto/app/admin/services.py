@@ -1,8 +1,9 @@
+from datetime import datetime, timedelta
 from typing import Annotated
 from fastapi import Depends
 from math import ceil
 
-from snu_toto.app.admin.exceptions import SelfRoleChangeDeniedError
+from snu_toto.app.admin.exceptions import AlreadySuspendedError, SelfRoleChangeDeniedError, SelfSuspensionDeniedError
 from snu_toto.app.bets.exceptions import EventNotFoundError
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.bets.repositories import BetRepositories
@@ -12,7 +13,7 @@ from snu_toto.app.bets.schemas import (
 )
 from snu_toto.app.users.exceptions import UserNotFoundError
 from snu_toto.app.users.repositories import UserRepository
-from snu_toto.app.users.schemas import UserAdminResponse, UserRoleUpdateRequest
+from snu_toto.app.users.schemas import SuspensionInfo, UserAdminResponse, UserRoleUpdateRequest, UserSuspendRequest, UserSuspendResponse
 
 class AdminServices:
     def __init__(
@@ -101,3 +102,49 @@ class AdminServices:
         await session.refresh(user)
         
         return UserAdminResponse.model_validate(user)
+
+    async def suspend_user(
+        self, 
+        current_admin_id: str, 
+        target_user_id: str, 
+        data: UserSuspendRequest
+    ) -> UserSuspendResponse:
+        
+        user = await self.user_repo.get_by_id(target_user_id)
+        if not user:
+            raise UserNotFoundError()
+
+        if current_admin_id == target_user_id:
+            raise SelfSuspensionDeniedError()
+
+        # 중복 정지 체크
+        now = datetime.now()
+        if user.suspended_until and user.suspended_until > now:
+            raise AlreadySuspendedError()
+
+        # 정지 종료 시점 계산
+        suspended_until = now + timedelta(hours=data.suspension_hours)
+
+        # DB 업데이트
+        session = self.user_repo.db
+        if not session.in_transaction():
+            async with session.begin():
+                await self.user_repo.update_user_suspension(
+                    user_id=target_user_id,
+                    suspended_until=suspended_until,
+                    reason=data.suspension_reason
+                )
+        else:
+            await self.user_repo.update_user_suspension(target_user_id, suspended_until, data.suspension_reason)
+            await session.flush()
+
+        await session.refresh(user)
+
+        return UserSuspendResponse(
+            user_id=user.user_id,
+            suspension_info=SuspensionInfo(
+                suspension_reason=user.suspension_reason,
+                suspended_at=now,
+                suspended_until=suspended_until
+            )
+        )

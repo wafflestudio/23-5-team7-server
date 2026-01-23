@@ -54,3 +54,18 @@ class UserAdminResponse(BaseModel):
     email: str
     nickname: str
     role: UserRole
+
+class UserSuspendRequest(BaseModel):
+    suspension_hours: int = Field(..., ge=1)
+    suspension_reason: str = Field(..., min_length=1, max_length=50)
+
+class SuspensionInfo(BaseModel):
+    suspension_reason: str
+    suspended_at: datetime
+    suspended_until: datetime
+
+class UserSuspendResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str
+    suspension_info: SuspensionInfo

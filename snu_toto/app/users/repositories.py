@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated, Optional
 from fastapi import Depends
 from sqlalchemy import update
@@ -47,4 +48,20 @@ class UserRepository:
             update(User)
             .where(User.user_id == user_id)
             .values(role=new_role)
+        )
+    
+    async def update_user_suspension(
+        self, 
+        user_id: str, 
+        suspended_until: datetime, 
+        reason: str
+    ) -> None:
+        """유저의 정지 정보를 업데이트"""
+        await self.db.execute(
+            update(User)
+            .where(User.user_id == user_id)
+            .values(
+                suspended_until=suspended_until,
+                suspension_reason=reason
+            )
         )
