@@ -5,15 +5,8 @@ from datetime import datetime
 
 from snu_toto.app.common.exceptions import InvalidFormatException, MissingRequiredFieldException
 from snu_toto.app.users.exceptions import *
+from snu_toto.app.users.models import SocialType, UserRole
 
-class UserRole(str, Enum):
-    USER = "USER"
-    ADMIN = "ADMIN"
-
-class SocialType(str, Enum):
-    LOCAL = "LOCAL"
-    GOOGLE = "GOOGLE"
-    KAKAO = "KAKAO"
 
 class UserSignupRequest(BaseModel):
     email: EmailStr
