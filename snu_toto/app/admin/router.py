@@ -10,6 +10,7 @@ from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.users.models import User
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.bets.models import Bet
+from snu_toto.app.users.schemas import UserAdminResponse, UserRoleUpdateRequest
 
 # seed 함수들 import
 from .seed_test_data import create_test_users, create_test_events, create_test_bets
@@ -31,6 +32,20 @@ async def get_event_bets_for_admin(
         event_id=event_id,
         page=page,
         limit=limit
+    )
+
+@admin_router.patch("/users/{user_id}/role", status_code=200)
+async def update_user_role(
+    user_id: str,
+    payload: UserRoleUpdateRequest,
+    admin_service: AdminServices = Depends(),
+    current_admin: User = Depends(get_current_admin_user)
+)->UserAdminResponse:
+    """[관리자용] 유저 권한 변경"""
+    return await admin_service.update_user_role(
+        current_admin_id=current_admin.user_id,
+        target_user_id=user_id,
+        data=payload
     )
 
 ################################################################

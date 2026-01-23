@@ -1,10 +1,13 @@
-from typing import Optional
+from typing import Annotated, Optional
+from fastapi import Depends
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from snu_toto.app.core.database import get_db_session
 from snu_toto.app.users.models import User
 
 class UserRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db_session)]):
         self.db = db
 
     async def get_by_id(self, user_id: str) -> Optional[User]:
@@ -37,3 +40,11 @@ class UserRepository:
         self.db.add(user)
         await self.db.flush() 
         return user
+
+    async def update_user_role(self, user_id: str, new_role: str) -> None:
+        """유저의 역할을 업데이트"""
+        await self.db.execute(
+            update(User)
+            .where(User.user_id == user_id)
+            .values(role=new_role)
+        )

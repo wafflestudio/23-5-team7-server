@@ -43,3 +43,14 @@ class UserResponse(BaseModel):
     is_verified: bool = False
     social_type: SocialType = SocialType.LOCAL
     created_at: datetime
+
+class UserRoleUpdateRequest(BaseModel):
+    role: UserRole = Field(...)
+
+class UserAdminResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str
+    email: str
+    nickname: str
+    role: UserRole
