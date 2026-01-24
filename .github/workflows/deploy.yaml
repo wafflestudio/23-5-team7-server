@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4 
       
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,10 +29,11 @@ jobs:
         run: |
           uv run pytest snu_toto/tests/ -v
         env:
-          DB_DIALECT: sqlite
-          DB_DRIVER: aiosqlite
-          ACCESS_TOKEN_SECRET: test-secret-key
-          REFRESH_TOKEN_SECRET: test-refresh-secret-key
+           DB_URL: sqlite+aiosqlite:///:memory:
+           DB_DIALECT: sqlite
+           DB_DRIVER: aiosqlite
+           ACCESS_TOKEN_SECRET: ${{ secrets.TEST_ACCESS_TOKEN_SECRET }}
+           REFRESH_TOKEN_SECRET: ${{ secrets.TEST_REFRESH_TOKEN_SECRET }}
   
   build:
     runs-on: ubuntu-latest
