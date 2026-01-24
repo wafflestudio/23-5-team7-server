@@ -29,11 +29,11 @@ jobs:
         run: |
           uv run pytest snu_toto/tests/ -v
         env:
-           DB_URL: sqlite+aiosqlite:///:memory:
-           DB_DIALECT: sqlite
-           DB_DRIVER: aiosqlite
-           ACCESS_TOKEN_SECRET: ${{ secrets.TEST_ACCESS_TOKEN_SECRET }}
-           REFRESH_TOKEN_SECRET: ${{ secrets.TEST_REFRESH_TOKEN_SECRET }}
+          DB_URL: "sqlite+aiosqlite:///:memory:"
+          DB_DIALECT: sqlite
+          DB_DRIVER: aiosqlite
+          ACCESS_TOKEN_SECRET: ${{ secrets.TEST_ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.TEST_REFRESH_TOKEN_SECRET }}
   
   build:
     runs-on: ubuntu-latest
