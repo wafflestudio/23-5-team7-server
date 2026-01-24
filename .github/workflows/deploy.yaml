@@ -3,11 +3,41 @@ on:
   push:
     branches:
       - main
-      - 'feat/CICD*'  # feat/CICD로 시작하는 모든 브랜치
+      - 'feat/CICD*' # feat/CICD로 시작하는 모든 브랜치
+      - 'feat/add_test_on_CICD'
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      
+      - name: Install dependencies
+        run: |
+          uv sync
+      
+      - name: Run pytest
+        run: |
+          uv run pytest snu_toto/tests/ -v
+        env:
+          DB_URL: "sqlite+aiosqlite:///:memory:"
+          DB_DIALECT: sqlite
+          DB_DRIVER: aiosqlite
+          ACCESS_TOKEN_SECRET: ${{ secrets.TEST_ACCESS_TOKEN_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.TEST_REFRESH_TOKEN_SECRET }}
+  
   build:
     runs-on: ubuntu-latest
+    needs: test
     steps: 
       - name: Checkout repository
         uses: actions/checkout@v4
