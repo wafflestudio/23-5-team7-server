@@ -1,4 +1,5 @@
 from __future__ import annotations
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from httpx import AsyncClient
@@ -164,13 +165,26 @@ async def test_login_user_not_found(async_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_google_callback_new_user(async_client: AsyncClient):
     """(A15) 구글 콜백 성공 (신규 가입)"""
-    response = await async_client.get("/api/auth/google/callback?code=valid_code")
+    response = await async_client.get(
+        "/api/auth/google/callback?code=valid_code", 
+        follow_redirects=False
+    )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["email"] == "test@snu.ac.kr"
-    assert data["needs_signup"] is True
-    assert data["social_type"] == "GOOGLE"
+    assert response.status_code in [302, 307]
+
+    # 쿼리 파라미터 확인
+    location = response.headers.get("Location")
+    parsed_url = urlparse(location)
+    params = parse_qs(parsed_url.query)
+    
+    assert params.get("needs_signup") == ["true"]
+    assert params.get("email") == ["test@snu.ac.kr"]
+    assert params.get("social_type") == ["GOOGLE"]
+    assert "social_id" in params
+
+    # 쿠키가 설정되지 않는 것 확인
+    assert "access_token" not in response.cookies
+    assert "refresh_token" not in response.cookies
 
 
 @pytest.mark.asyncio
@@ -189,22 +203,44 @@ async def test_google_callback_existing_user(async_client: AsyncClient, db_sessi
     db_session.add(user)
     await db_session.commit()
 
-    response = await async_client.get("/api/auth/google/callback?code=existing_user_code")
+    response = await async_client.get(
+        "/api/auth/google/callback?code=existing_user_code", 
+        follow_redirects=False
+    )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["access_token"] is not None
-    assert data["needs_signup"] is False
+    assert response.status_code in [302, 307]
+
+    location = response.headers.get("Location")
+    assert location.startswith("https://d55bqrug1d7zs.cloudfront.net/")
+    
+    parsed_url = urlparse(location)
+    params = parse_qs(parsed_url.query)
+    
+    assert params.get("needs_signup") == ["false"]
+
+    # 쿠키 검증
+    assert "access_token" in response.cookies
+    assert "refresh_token" in response.cookies
+    
+    # 쿠키 값 자체가 None이 아닌지도 확인
+    assert response.cookies["access_token"] is not None
+    assert response.cookies["refresh_token"] is not None
 
 
 @pytest.mark.asyncio
 async def test_google_callback_missing_code(async_client: AsyncClient):
     """(A17) 콜백 code 누락"""
-    response = await async_client.get("/api/auth/google/callback") # No code
+    response = await async_client.get("/api/auth/google/callback", follow_redirects=False) # No code
 
-    assert response.status_code == 400
-    error = response.json()
-    assert error["error_code"] == "ERR_020"
+    assert response.status_code in [302, 307]
+
+    location = response.headers.get("Location")
+
+    parsed_url = urlparse(location)
+    params = parse_qs(parsed_url.query)
+
+    assert params.get("error") == ["ERR_020"]
+    assert "message" in params
 
 
 
