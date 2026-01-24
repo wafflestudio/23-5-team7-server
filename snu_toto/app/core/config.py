@@ -46,6 +46,11 @@ class DatabaseSettings(BaseSettings):
     @computed_field
     @property
     def url(self) -> str:
+        # Allow full DB URL override via DB_URL env var (깃허브 상에서만 작동함, EC로 넘어가지 않음)
+        env_url = os.getenv("DB_URL")
+        if env_url:
+            return env_url
+
         return f"{self.dialect}+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.database}"
 
     model_config = SettingsConfigDict(
