@@ -25,6 +25,6 @@ async def create_bet(
         bet_data=bet_data
     )
 
-    await event_service.update_odds_and_broadcast(bet_data.event_id)  # ← 추가
+    await event_service.update_odds_and_broadcast(event_id)  # ← 추가
     
     return bet
