@@ -65,3 +65,9 @@ class UserRepository:
                 suspension_reason=reason
             )
         )
+    
+    async def clear_suspension(self, user: User) -> None:
+        """DB에서 정지 정보를 삭제하고 메모리 객체도 동기화"""
+        user.suspended_until = None
+        user.suspension_reason = None
+        await self.db.flush()

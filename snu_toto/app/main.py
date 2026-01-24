@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -77,10 +78,13 @@ async def custom_exception_handler(request: Request, exc: SnutotoException):
     # payload 안에 데이터(예: verification_token)가 있다면 병합
     if exc.payload:
         content.update(exc.payload)
+
+    if exc.detail:
+        content.update(exc.detail)
         
     return JSONResponse(
         status_code=exc.status_code,
-        content=content
+        content=jsonable_encoder(content)
     )
 # 에러 형태 통일
 @app.exception_handler(RequestValidationError)

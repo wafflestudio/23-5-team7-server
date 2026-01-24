@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -12,7 +13,7 @@ from snu_toto.app.users.models import User, UserRole
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.auth.services import AuthService, VerificationService
 from snu_toto.app.auth.providers.google import GoogleAuthClient
-from snu_toto.app.auth.exceptions import BadAuthHeaderException, UnauthenticatedException, InvalidTokenException
+from snu_toto.app.auth.exceptions import BadAuthHeaderException, SuspendedUserException, UnauthenticatedException, InvalidTokenException
 
 security = HTTPBearer(auto_error=False)
 
@@ -77,7 +78,8 @@ async def get_current_unverified_user(
 
 async def get_current_user(
     token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service)
 ) -> User:
     """유효한 액세스 토큰을 확인하여 현재 로그인한 유저 객체 반환"""
 
@@ -114,6 +116,8 @@ async def get_current_user(
     
     if not user:
         raise InvalidTokenException()
+    
+    await auth_service._check_user_suspension(user)
 
     return user
 
