@@ -3,7 +3,8 @@ on:
   push:
     branches:
       - main
-      - 'feat/CICD*'  # feat/CICD로 시작하는 모든 브랜치
+      - 'feat/CICD*' # feat/CICD로 시작하는 모든 브랜치
+      - 'feat/add_test_on_CICD'
 
 jobs:
   test:
