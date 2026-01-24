@@ -2,15 +2,25 @@ from typing import AsyncGenerator, Any
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from .config import DB_SETTINGS
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import StaticPool
 
 
-engine = create_async_engine(
-    DB_SETTINGS.url,
-    pool_recycle=28000,
-    pool_size=10,
-    max_overflow=20, # 커넥션 풀이 꽉 찼을 때 추가로 허용할 연결 수
-    pool_pre_ping=True,
-)
+db_url = DB_SETTINGS.url
+
+if isinstance(db_url, str) and db_url.startswith("sqlite"):
+    engine = create_async_engine(
+        db_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+else:
+    engine = create_async_engine(
+        db_url,
+        pool_recycle=28000,
+        pool_size=10,
+        max_overflow=20, # 커넥션 풀이 꽉 찼을 때 추가로 허용할 연결 수
+        pool_pre_ping=True,
+    )
 
 AsyncSessionLocal = async_sessionmaker(
     bind=engine, 
