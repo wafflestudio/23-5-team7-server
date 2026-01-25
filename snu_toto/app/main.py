@@ -1,6 +1,7 @@
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -77,10 +78,13 @@ async def custom_exception_handler(request: Request, exc: SnutotoException):
     # payload 안에 데이터(예: verification_token)가 있다면 병합
     if exc.payload:
         content.update(exc.payload)
+
+    if exc.detail:
+        content.update(exc.detail)
         
     return JSONResponse(
         status_code=exc.status_code,
-        content=content
+        content=jsonable_encoder(content)
     )
 # 에러 형태 통일
 @app.exception_handler(RequestValidationError)
@@ -91,7 +95,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             raise MissingRequiredFieldException()
 
         # 형식 및 길이 위반(ERR_002)
-        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum", "list_type", "string_type"]:
+        if error["type"] in ["string_too_short", "string_too_long", "value_error", "email_type", "enum", "list_type", "string_type", "int_parsing", "int_from_float", "greater_than_equal"]:
             raise InvalidFormatException()
         
     return await request_validation_exception_handler(request, exc)

@@ -111,6 +111,19 @@ class User(Base):
         nullable=True, 
     )
 
+    # 정지 풀리는 시각
+    suspended_until: Mapped[Optional[DateTime]] = mapped_column(
+        DateTime, 
+        nullable=True
+    )
+
+    # 정지 사유
+    suspension_reason: Mapped[Optional[str]] = mapped_column(
+        String(50), 
+        nullable=True
+    )
+
+
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="user")
     created_events: Mapped[list["Event"]] = relationship("Event", back_populates="creator")

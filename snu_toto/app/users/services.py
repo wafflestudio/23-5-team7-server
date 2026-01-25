@@ -45,7 +45,9 @@ class UserService:
             is_verified=False,
             is_snu_verified=False,
             social_type=user_in.social_type.value,
-            social_id=social_id
+            social_id=social_id,
+            suspended_until=None,
+            suspension_reason=None
         )
 
         await self.user_repo.create(new_user)
