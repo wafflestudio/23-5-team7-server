@@ -1,7 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
-from snu_toto.app.users.models import User
-from snu_toto.app.users.schemas import SocialType, UserSignupRequest, UserBetsResponse, UserBetItem
+from snu_toto.app.users.models import User, PointReason
+from snu_toto.app.users.schemas import (
+    SocialType, 
+    UserSignupRequest,
+    UserBetsResponse,
+    UserBetItem,
+    UserPointHistoryResponse,
+    UserPointHistoryItem
+)
 from snu_toto.app.core.security import get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
@@ -70,7 +77,7 @@ class UserService:
         offset: int = 0
     ) -> UserBetsResponse:
         """
-        사용자의 베팅 내역 조회
+        사용자의 베팅 내역 조회 (참여 중인 베팅 확인)
         """
         bets_data, total_count = await self.user_repo.get_user_bets(
             user_id=user_id,
@@ -85,4 +92,35 @@ class UserService:
         return UserBetsResponse(
             total_count=total_count,
             bets=bet_items
+        )
+
+    async def get_my_point_history(
+        self,
+        user_id: str,
+        reason: Optional[PointReason] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> UserPointHistoryResponse:
+        """
+        사용자의 포인트 내역 조회
+        """
+        # 현재 잔액 조회
+        user = await self.user_repo.get_by_id(user_id)
+        current_balance = user.points
+        
+        # 포인트 내역 조회
+        histories_data, total_count = await self.user_repo.get_user_point_history(
+            user_id=user_id,
+            reason=reason,
+            limit=limit,
+            offset=offset
+        )
+        
+        # 딕셔너리를 Pydantic 모델로 변환
+        history_items = [UserPointHistoryItem(**history) for history in histories_data]
+        
+        return UserPointHistoryResponse(
+            current_balance=current_balance,
+            total_count=total_count,
+            history=history_items
         )

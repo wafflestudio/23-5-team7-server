@@ -5,6 +5,7 @@ from datetime import datetime
 
 from snu_toto.app.common.exceptions import InvalidFormatException, MissingRequiredFieldException
 from snu_toto.app.users.exceptions import *
+from snu_toto.app.users.models import PointReason
 from snu_toto.app.bets.models import BetStatus
 
 class UserRole(str, Enum):
@@ -52,7 +53,7 @@ class UserResponse(BaseModel):
     social_type: SocialType = SocialType.LOCAL
     created_at: datetime
 
-# 내 베팅 내역 조회용 스키마
+# 참여 중인 베팅 내역 조회용 스키마
 class UserBetItem(BaseModel):
     """사용자 베팅 내역 아이템"""
     model_config = ConfigDict(from_attributes=True)
@@ -70,3 +71,25 @@ class UserBetsResponse(BaseModel):
     """사용자 베팅 내역 조회 응답"""
     total_count: int
     bets: List[UserBetItem]
+
+# 내 포인트 내역 조회용 스키마 (베팅 정보 통합)
+class UserPointHistoryItem(BaseModel):
+    """사용자 포인트 내역 아이템 (베팅 세부 정보 포함)"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    history_id: str
+    reason: PointReason
+    change_amount: int
+    points_after: int
+    bet_id: Optional[str] = None
+    event_id: Optional[str] = None
+    event_title: Optional[str] = None
+    option_id: Optional[str] = None
+    option_name: Optional[str] = None
+    created_at: datetime
+
+class UserPointHistoryResponse(BaseModel):
+    """사용자 포인트 내역 조회 응답"""
+    current_balance: int
+    total_count: int
+    history: List[UserPointHistoryItem]

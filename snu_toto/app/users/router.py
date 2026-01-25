@@ -1,10 +1,15 @@
 from fastapi import APIRouter, Depends, status, Query
 from typing import Optional
 
-from snu_toto.app.users.schemas import UserSignupRequest, UserResponse, UserBetsResponse
+from snu_toto.app.users.schemas import (
+    UserSignupRequest, 
+    UserResponse,
+    UserBetsResponse,
+    UserPointHistoryResponse
+)
 from snu_toto.app.users.services import UserService
 from snu_toto.app.users.dependencies import get_user_service
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import User, PointReason
 from snu_toto.app.auth.dependencies import get_current_user
 from snu_toto.app.bets.models import BetStatus
 
@@ -26,10 +31,26 @@ async def get_my_bets(
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service)
 ) -> UserBetsResponse:
-    """현재 로그인한 사용자의 베팅 내역 조회"""
+    """현재 로그인한 사용자의 베팅 내역 조회 (참여 중인 베팅)"""
     return await user_service.get_my_bets(
         user_id=current_user.user_id,
         status=status_filter,
+        limit=limit,
+        offset=offset
+    )
+
+@users_router.get("/me/point-history", status_code=status.HTTP_200_OK)
+async def get_my_point_history(
+    reason_filter: Optional[PointReason] = Query(None, alias="reason", description="포인트 변경 사유 필터"),
+    limit: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    offset: int = Query(0, ge=0, description="페이지 오프셋"),
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+) -> UserPointHistoryResponse:
+    """현재 로그인한 사용자의 포인트 내역 조회 (베팅 세부 정보 포함)"""
+    return await user_service.get_my_point_history(
+        user_id=current_user.user_id,
+        reason=reason_filter,
         limit=limit,
         offset=offset
     )

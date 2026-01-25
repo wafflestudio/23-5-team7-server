@@ -2,7 +2,7 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import User, PointHistory, PointReason
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
 
@@ -49,9 +49,9 @@ class UserRepository:
         offset: int = 0
     ) -> tuple[List[dict], int]:
         """
-        사용자의 베팅 내역 조회 (필터링, 페이지네이션 지원)
+        사용자의 베팅 내역 조회 (참여 중인 베팅 확인)
         """
-        # 베팅 내역 조회 쿼리 (조인 포함)
+        # 베팅 내역 조회 쿼리 (Event, EventOption 조인)
         query = (
             select(
                 Bet.bet_id,
@@ -91,5 +91,59 @@ class UserRepository:
         bets = result.mappings().all()
         
         return [dict(bet) for bet in bets], total_count
+
+    async def get_user_point_history(
+        self,
+        user_id: str,
+        reason: Optional[PointReason] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> tuple[List[dict], int]:
+        """
+        사용자의 포인트 내역 조회 (베팅 세부 정보 포함)
+        """
+        # 포인트 내역 조회 쿼리 (Bet, Event, EventOption 조인하여 베팅 세부 정보 포함)
+        query = (
+            select(
+                PointHistory.history_id,
+                PointHistory.reason,
+                PointHistory.change_amount,
+                PointHistory.points_after,
+                PointHistory.bet_id,
+                Bet.event_id.label("event_id"),
+                Event.title.label("event_title"),
+                Bet.option_id.label("option_id"),
+                EventOption.name.label("option_name"),
+                PointHistory.created_at
+            )
+            .outerjoin(Bet, PointHistory.bet_id == Bet.bet_id)
+            .outerjoin(Event, Bet.event_id == Event.event_id)
+            .outerjoin(EventOption, Bet.option_id == EventOption.option_id)
+            .where(PointHistory.user_id == user_id)
+        )
+        
+        # reason 필터링
+        if reason:
+            query = query.where(PointHistory.reason == reason)
+        
+        # 최신 순으로 정렬
+        query = query.order_by(PointHistory.created_at.desc())
+        
+        # 전체 개수 조회
+        count_query = select(func.count()).select_from(PointHistory).where(PointHistory.user_id == user_id)
+        if reason:
+            count_query = count_query.where(PointHistory.reason == reason)
+        
+        total_result = await self.db.execute(count_query)
+        total_count = total_result.scalar()
+        
+        # 페이지네이션 적용
+        query = query.limit(limit).offset(offset)
+        
+        # 실행
+        result = await self.db.execute(query)
+        histories = result.mappings().all()
+        
+        return [dict(history) for history in histories], total_count
  
         return user
