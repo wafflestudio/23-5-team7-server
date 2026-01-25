@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from enum import Enum
 from datetime import datetime
@@ -44,6 +44,14 @@ class UserResponse(BaseModel):
     social_type: SocialType = SocialType.LOCAL
     created_at: datetime
 
+class UserRankItem(BaseModel):
+    rank: int
+    nickname: str
+    points: int
+
+class UserRankingResponse(BaseModel):
+    total_count: int  # 전체 순위권 대상 유저 수
+    rankings: List[UserRankItem]
 class UserRoleUpdateRequest(BaseModel):
     role: UserRole = Field(...)
 
