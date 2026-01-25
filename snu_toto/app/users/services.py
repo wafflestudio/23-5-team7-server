@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.users.models import User
-from snu_toto.app.users.schemas import SocialType, UserSignupRequest
+from snu_toto.app.users.schemas import SocialType, UserRankingResponse, UserSignupRequest
 from snu_toto.app.core.security import get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
@@ -61,7 +61,7 @@ class UserService:
             
         return new_user
 
-    async def get_top_users_with_total(self, limit: int):
+    async def get_top_users_with_total(self, limit: int) -> UserRankingResponse:
         # 전체 유저 수 조회 (순위에 포함될 대상)
         total_query = select(func.count(User.user_id))
         total_res = await self.db.execute(total_query)
@@ -82,4 +82,4 @@ class UserService:
             for i, u in enumerate(users)
         ]
 
-        return {"total_count": total_count, "rankings": rankings}
+        return UserRankingResponse(total_count=total_count, rankings=rankings)
