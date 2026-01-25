@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Query
+from typing import Optional
 
-from snu_toto.app.users.schemas import UserSignupRequest, UserResponse
+from snu_toto.app.users.schemas import UserSignupRequest, UserResponse, UserBetsResponse
 from snu_toto.app.users.services import UserService
 from snu_toto.app.users.dependencies import get_user_service
+from snu_toto.app.users.models import User
+from snu_toto.app.auth.dependencies import get_current_user
+from snu_toto.app.bets.models import BetStatus
 
 
 users_router = APIRouter()
@@ -13,6 +17,22 @@ async def signup(
     user_service: UserService = Depends(get_user_service) 
 ) -> UserResponse:
     return await user_service.signup(user_in)
+
+@users_router.get("/me/bets", status_code=status.HTTP_200_OK)
+async def get_my_bets(
+    status_filter: Optional[BetStatus] = Query(None, alias="status", description="베팅 상태 필터"),
+    limit: int = Query(20, ge=1, le=100, description="페이지 크기"),
+    offset: int = Query(0, ge=0, description="페이지 오프셋"),
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+) -> UserBetsResponse:
+    """현재 로그인한 사용자의 베팅 내역 조회"""
+    return await user_service.get_my_bets(
+        user_id=current_user.user_id,
+        status=status_filter,
+        limit=limit,
+        offset=offset
+    )
 
 ##################################################################################
 

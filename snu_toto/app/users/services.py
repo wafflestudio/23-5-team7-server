@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Optional
 from snu_toto.app.users.models import User
-from snu_toto.app.users.schemas import SocialType, UserSignupRequest
+from snu_toto.app.users.schemas import SocialType, UserSignupRequest, UserBetsResponse, UserBetItem
 from snu_toto.app.core.security import get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
@@ -8,6 +9,7 @@ from snu_toto.app.users.exceptions import (
     NicknameAlreadyExistsException, 
     SocialIdAlreadyExistsException
 )
+from snu_toto.app.bets.models import BetStatus
 
 class UserService:
     def __init__(self, db: AsyncSession):
@@ -59,3 +61,28 @@ class UserService:
             raise e
             
         return new_user
+
+    async def get_my_bets(
+        self,
+        user_id: str,
+        status: Optional[BetStatus] = None,
+        limit: int = 20,
+        offset: int = 0
+    ) -> UserBetsResponse:
+        """
+        사용자의 베팅 내역 조회
+        """
+        bets_data, total_count = await self.user_repo.get_user_bets(
+            user_id=user_id,
+            status=status,
+            limit=limit,
+            offset=offset
+        )
+        
+        # 딕셔너리를 Pydantic 모델로 변환
+        bet_items = [UserBetItem(**bet) for bet in bets_data]
+        
+        return UserBetsResponse(
+            total_count=total_count,
+            bets=bet_items
+        )
