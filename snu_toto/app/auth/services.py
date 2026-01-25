@@ -1,12 +1,14 @@
+from datetime import datetime
 import random
 import string
 from redis.asyncio import Redis
 
-from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, InvalidCredentialsException
+from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, InvalidCredentialsException, SuspendedUserException
 from snu_toto.app.auth.providers.google import GoogleAuthClient
 from snu_toto.app.auth.schemas import GoogleAuthResponse, GoogleUserResult, LoginResponse, UserLoginResult
 from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, verify_password
 from snu_toto.app.users.exceptions import EmailAlreadyExistsException, OnlySnuEmailAllowedException
+from snu_toto.app.users.models import User
 from snu_toto.app.users.repositories import UserRepository
 
 
@@ -28,6 +30,8 @@ class AuthService:
         # 3. 기존 소셜 유저 확인
         user = await self.user_repo.get_by_social_id("GOOGLE", social_id)
         if user:
+            await self._check_user_suspension(user)
+
             access_token = create_login_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
             return GoogleAuthResponse(
@@ -65,6 +69,8 @@ class AuthService:
             # 인증 안 된 유저에게는 15분짜리 임시 토큰을 생성해서 던짐
             v_token = create_verification_token(user.user_id)
             raise EmailVerificationRequiredException(verification_token=v_token)
+        
+        await self._check_user_suspension(user)
 
         # 로그인 성공 - 토큰 생성
         access_token = create_login_access_token(user.user_id)
@@ -80,6 +86,20 @@ class AuthService:
                 points=user.points
             )
         )
+    
+    async def _check_user_suspension(self, user: User):
+        """정지 여부 확인 및 자동 복구 공통 로직"""
+        if not user.suspended_until:
+            return
+
+        if datetime.now() < user.suspended_until:
+            raise SuspendedUserException(
+                suspension_reason=user.suspension_reason,
+                suspended_until=user.suspended_until
+            )
+        
+        # 기한 만료 시 복구
+        await self.user_repo.clear_suspension(user)
 
 class VerificationService:
     def __init__(self, redis: Redis):
@@ -126,4 +146,3 @@ class VerificationService:
             return True
             
         return False
-    

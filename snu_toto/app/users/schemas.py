@@ -5,15 +5,8 @@ from datetime import datetime
 
 from snu_toto.app.common.exceptions import InvalidFormatException, MissingRequiredFieldException
 from snu_toto.app.users.exceptions import *
+from snu_toto.app.users.models import SocialType, UserRole
 
-class UserRole(str, Enum):
-    USER = "USER"
-    ADMIN = "ADMIN"
-
-class SocialType(str, Enum):
-    LOCAL = "LOCAL"
-    GOOGLE = "GOOGLE"
-    KAKAO = "KAKAO"
 
 class UserSignupRequest(BaseModel):
     email: EmailStr
@@ -59,3 +52,28 @@ class UserRankItem(BaseModel):
 class UserRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
     rankings: List[UserRankItem]
+class UserRoleUpdateRequest(BaseModel):
+    role: UserRole = Field(...)
+
+class UserAdminResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str
+    email: str
+    nickname: str
+    role: UserRole
+
+class UserSuspendRequest(BaseModel):
+    suspension_hours: int = Field(..., ge=1)
+    suspension_reason: str = Field(..., min_length=1, max_length=50)
+
+class SuspensionInfo(BaseModel):
+    suspension_reason: str
+    suspended_at: datetime
+    suspended_until: datetime
+
+class UserSuspendResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str
+    suspension_info: SuspensionInfo
