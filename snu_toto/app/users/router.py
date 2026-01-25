@@ -7,6 +7,7 @@ from snu_toto.app.users.schemas import (
     UserBetsResponse,
     UserPointHistoryResponse,
     UserProfileResponse,
+    UserStatsResponse,
     UserRankingResponse
 )
 from snu_toto.app.users.services import UserService
@@ -64,6 +65,14 @@ async def get_my_profile(
 ) -> UserProfileResponse:
     """현재 로그인한 사용자의 프로필 정보 조회"""
     return await user_service.get_my_profile(user_id=current_user.user_id)
+
+@users_router.get("/me/stats", status_code=status.HTTP_200_OK)
+async def get_my_stats(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+) -> UserStatsResponse:
+    """현재 로그인한 사용자의 통계 정보 조회"""
+    return await user_service.get_my_stats(user_id=current_user.user_id)
 
 @users_router.get("/me/ranking", status_code=status.HTTP_200_OK)
 async def get_my_ranking(

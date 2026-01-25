@@ -107,6 +107,28 @@ class UserProfileResponse(BaseModel):
     is_snu_verified: bool
     social_type: SocialType
     created_at: datetime
+
+# 통계 조회용 스키마
+class UserPointsStats(BaseModel):
+    """포인트 통계"""
+    current_balance: int
+    total_earned: int
+    total_spent: int
+
+class UserBetsStats(BaseModel):
+    """베팅 통계"""
+    total_bets_count: int
+    pending_count: int
+    win_count: int
+    lose_count: int
+    refunded_count: int
+    win_rate: float
+
+class UserStatsResponse(BaseModel):
+    """사용자 통계 조회 응답"""
+    points: UserPointsStats
+    bets: UserBetsStats
+
 # 랜킹 조회용 스키마
 class UserRankingResponse(BaseModel):
     """사용자 랜킹 조회 응답"""

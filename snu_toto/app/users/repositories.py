@@ -146,6 +146,75 @@ class UserRepository:
         
         return [dict(history) for history in histories], total_count
 
+    async def get_user_stats(self, user_id: str) -> dict:
+        """
+        사용자의 통계 데이터 조회
+        """
+        # 현재 포인트
+        user = await self.get_by_id(user_id)
+        current_balance = user.points if user else 0
+        
+        # 포인트 통계 (total_earned, total_spent)
+        earned_query = select(func.sum(PointHistory.change_amount)).where(
+            PointHistory.user_id == user_id,
+            PointHistory.change_amount > 0
+        )
+        spent_query = select(func.sum(PointHistory.change_amount)).where(
+            PointHistory.user_id == user_id,
+            PointHistory.change_amount < 0
+        )
+        
+        earned_result = await self.db.execute(earned_query)
+        spent_result = await self.db.execute(spent_query)
+        
+        total_earned = earned_result.scalar() or 0
+        total_spent = abs(spent_result.scalar() or 0)
+        
+        # 베팅 통계
+        total_bets_query = select(func.count()).select_from(Bet).where(Bet.user_id == user_id)
+        pending_query = select(func.count()).select_from(Bet).where(
+            Bet.user_id == user_id,
+            Bet.status == BetStatus.PENDING
+        )
+        win_query = select(func.count()).select_from(Bet).where(
+            Bet.user_id == user_id,
+            Bet.status == BetStatus.WIN
+        )
+        lose_query = select(func.count()).select_from(Bet).where(
+            Bet.user_id == user_id,
+            Bet.status == BetStatus.LOSE
+        )
+        refunded_query = select(func.count()).select_from(Bet).where(
+            Bet.user_id == user_id,
+            Bet.status == BetStatus.REFUNDED
+        )
+        
+        total_bets = (await self.db.execute(total_bets_query)).scalar() or 0
+        pending_count = (await self.db.execute(pending_query)).scalar() or 0
+        win_count = (await self.db.execute(win_query)).scalar() or 0
+        lose_count = (await self.db.execute(lose_query)).scalar() or 0
+        refunded_count = (await self.db.execute(refunded_query)).scalar() or 0
+        
+        # 승률 계산
+        settled_bets = win_count + lose_count
+        win_rate = round(win_count / settled_bets * 100, 1) if settled_bets > 0 else 0.0
+        
+        return {
+            "points": {
+                "current_balance": current_balance,
+                "total_earned": total_earned,
+                "total_spent": total_spent
+            },
+            "bets": {
+                "total_bets_count": total_bets,
+                "pending_count": pending_count,
+                "win_count": win_count,
+                "lose_count": lose_count,
+                "refunded_count": refunded_count,
+                "win_rate": win_rate
+            }
+        }
+
     async def get_user_ranking(self, user_id: str) -> dict:
         """
         사용자의 랭킹 정보 조회 (Redis에서 읽기만)
