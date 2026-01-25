@@ -8,6 +8,7 @@ from snu_toto.app.users.schemas import (
     UserBetItem,
     UserPointHistoryResponse,
     UserPointHistoryItem,
+    UserProfileResponse,
     UserRankingResponse
 )
 from snu_toto.app.core.security import get_password_hash
@@ -125,6 +126,13 @@ class UserService:
             total_count=total_count,
             history=history_items
         )
+
+    async def get_my_profile(self, user_id: str) -> UserProfileResponse:
+        """
+        사용자의 프로필 정보 조회
+        """
+        user = await self.user_repo.get_by_id(user_id)
+        return UserProfileResponse.model_validate(user)
 
     async def get_my_ranking(self, user_id: str) -> UserRankingResponse:
         """

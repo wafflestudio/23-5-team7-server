@@ -93,7 +93,20 @@ class UserPointHistoryResponse(BaseModel):
     current_balance: int
     total_count: int
     history: List[UserPointHistoryItem]
-
+# 프로필 조회용 스키마
+class UserProfileResponse(BaseModel):
+    """사용자 프로필 조회 응답"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    user_id: str
+    email: EmailStr
+    nickname: str
+    points: int
+    role: UserRole
+    is_verified: bool
+    is_snu_verified: bool
+    social_type: SocialType
+    created_at: datetime
 # 랜킹 조회용 스키마
 class UserRankingResponse(BaseModel):
     """사용자 랜킹 조회 응답"""
