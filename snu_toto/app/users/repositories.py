@@ -145,5 +145,35 @@ class UserRepository:
         histories = result.mappings().all()
         
         return [dict(history) for history in histories], total_count
- 
-        return user
+
+    async def get_user_ranking(self, user_id: str) -> dict:
+        """
+        사용자의 랭킹 정보 조회 (Redis에서 읽기만)
+        실제 계산은 매시 정각 배치 작업에서 수행됨
+        
+        Returns:
+            dict: 랭킹 정보 (Redis에서 조회)
+        """
+        from redis.asyncio import from_url
+        from snu_toto.app.core.config import REDIS_SETTINGS
+        import json
+        
+        redis = await from_url(REDIS_SETTINGS.URL, decode_responses=True)
+        
+        try:
+            cache_key = f"user_ranking:{user_id}"
+            cached = await redis.get(cache_key)
+            
+            if cached:
+                return json.loads(cached)
+            
+            # 캐시 없으면 기본값 반환 (배치 작업 대기 중)
+            user = await self.get_by_id(user_id)
+            return {
+                "rank": 0,
+                "total_users": 0,
+                "percentile": 0.0,
+                "my_points": user.points if user else 0
+            }
+        finally:
+            await redis.close()

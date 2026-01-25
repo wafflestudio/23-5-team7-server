@@ -93,3 +93,11 @@ class UserPointHistoryResponse(BaseModel):
     current_balance: int
     total_count: int
     history: List[UserPointHistoryItem]
+
+# 랜킹 조회용 스키마
+class UserRankingResponse(BaseModel):
+    """사용자 랜킹 조회 응답"""
+    rank: int
+    total_users: int
+    percentile: float
+    my_points: int

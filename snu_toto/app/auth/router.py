@@ -24,11 +24,6 @@ async def google_login():
     """구글 로그인 페이지로 리다이렉트 (dependencies의 google_client 사용)"""
     return RedirectResponse(google_client.get_auth_url())
 
-@auth_router.get("/google/login")
-async def google_login():
-    """구글 로그인 페이지로 리다이렉트 (dependencies의 google_client 사용)"""
-    return RedirectResponse(google_client.get_auth_url())
-
 @auth_router.get("/google/callback", response_model=GoogleAuthResponse)
 async def google_callback(
     code: str = Query(None, description="구글 인가 코드"),
