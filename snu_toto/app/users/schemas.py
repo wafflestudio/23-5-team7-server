@@ -5,7 +5,8 @@ from datetime import datetime
 
 from snu_toto.app.common.exceptions import InvalidFormatException, MissingRequiredFieldException
 from snu_toto.app.users.exceptions import *
-from snu_toto.app.users.models import SocialType, UserRole
+from snu_toto.app.users.models import PointReason, SocialType, UserRole
+from snu_toto.app.bets.models import BetStatus
 
 
 class UserSignupRequest(BaseModel):
@@ -44,6 +45,89 @@ class UserResponse(BaseModel):
     social_type: SocialType = SocialType.LOCAL
     created_at: datetime
 
+# 참여 중인 베팅 내역 조회용 스키마
+class UserBetItem(BaseModel):
+    """사용자 베팅 내역 아이템"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    bet_id: str
+    event_id: str
+    event_title: str
+    option_id: str
+    option_name: str
+    amount: int
+    status: BetStatus
+    created_at: datetime
+
+class UserBetsResponse(BaseModel):
+    """사용자 베팅 내역 조회 응답"""
+    total_count: int
+    bets: List[UserBetItem]
+
+# 내 포인트 내역 조회용 스키마 (베팅 정보 통합)
+class UserPointHistoryItem(BaseModel):
+    """사용자 포인트 내역 아이템 (베팅 세부 정보 포함)"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    history_id: str
+    reason: PointReason
+    change_amount: int
+    points_after: int
+    bet_id: Optional[str] = None
+    event_id: Optional[str] = None
+    event_title: Optional[str] = None
+    option_id: Optional[str] = None
+    option_name: Optional[str] = None
+    created_at: datetime
+
+class UserPointHistoryResponse(BaseModel):
+    """사용자 포인트 내역 조회 응답"""
+    current_balance: int
+    total_count: int
+    history: List[UserPointHistoryItem]
+# 프로필 조회용 스키마
+class UserProfileResponse(BaseModel):
+    """사용자 프로필 조회 응답"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    user_id: str
+    email: EmailStr
+    nickname: str
+    points: int
+    role: UserRole
+    is_verified: bool
+    is_snu_verified: bool
+    social_type: SocialType
+    created_at: datetime
+
+# 통계 조회용 스키마
+class UserPointsStats(BaseModel):
+    """포인트 통계"""
+    current_balance: int
+    total_earned: int
+    total_spent: int
+
+class UserBetsStats(BaseModel):
+    """베팅 통계"""
+    total_bets_count: int
+    pending_count: int
+    win_count: int
+    lose_count: int
+    refunded_count: int
+    win_rate: float
+
+class UserStatsResponse(BaseModel):
+    """사용자 통계 조회 응답"""
+    points: UserPointsStats
+    bets: UserBetsStats
+
+# 랜킹 조회용 스키마
+class UserRankingResponse(BaseModel):
+    """사용자 랜킹 조회 응답"""
+    rank: int
+    total_users: int
+    percentile: float
+    my_points: int
 class UserRankItem(BaseModel):
     rank: int
     nickname: str
@@ -52,6 +136,7 @@ class UserRankItem(BaseModel):
 class UserRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
     rankings: List[UserRankItem]
+      
 class UserRoleUpdateRequest(BaseModel):
     role: UserRole = Field(...)
 
