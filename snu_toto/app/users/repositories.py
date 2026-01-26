@@ -1,13 +1,17 @@
-from typing import Optional, List
+from typing import Annotated, Optional, List
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, update
 from snu_toto.app.users.models import User, PointHistory, PointReason
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
+from snu_toto.app.core.database import get_db_session
+from datetime import datetime
+
 
 class UserRepository:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: Annotated[AsyncSession, Depends(get_db_session)]):
         self.db = db
 
     async def get_by_id(self, user_id: str) -> Optional[User]:
@@ -246,3 +250,32 @@ class UserRepository:
             }
         finally:
             await redis.close()
+    async def update_user_role(self, user_id: str, new_role: str) -> None:
+        """유저의 역할을 업데이트"""
+        await self.db.execute(
+            update(User)
+            .where(User.user_id == user_id)
+            .values(role=new_role)
+        )
+    
+    async def update_user_suspension(
+        self, 
+        user_id: str, 
+        suspended_until: datetime, 
+        reason: str
+    ) -> None:
+        """유저의 정지 정보를 업데이트"""
+        await self.db.execute(
+            update(User)
+            .where(User.user_id == user_id)
+            .values(
+                suspended_until=suspended_until,
+                suspension_reason=reason
+            )
+        )
+    
+    async def clear_suspension(self, user: User) -> None:
+        """DB에서 정지 정보를 삭제하고 메모리 객체도 동기화"""
+        user.suspended_until = None
+        user.suspension_reason = None
+        await self.db.flush()

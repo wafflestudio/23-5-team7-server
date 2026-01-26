@@ -55,3 +55,11 @@ class ForbiddenException(SnutotoException):
             error_code="ERR_030",
             error_msg="NOT ADMIN"
         )
+
+class UserNotFoundError(SnutotoException):
+    def __init__(self):
+        super().__init__(
+            status_code=404,
+            error_code="ERR_042",
+            error_msg="USER NOT FOUND"
+        )

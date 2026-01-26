@@ -82,7 +82,17 @@ async def google_callback(
         return response
 
     except SnutotoException as e:
-        return RedirectResponse(url=f"{LOGIN_PAGE}?error={e.error_code}&message={e.error_msg}")
+        params = {
+            "error": e.error_code,
+            "message": e.error_msg
+        }
+
+        if e.detail and isinstance(e.detail, dict):
+            params.update(e.detail)
+
+        query_string = urlencode(params)
+        
+        return RedirectResponse(url=f"{LOGIN_PAGE}?{query_string}")
     except Exception as e: # 기타 에러
         return RedirectResponse(url=f"{LOGIN_PAGE}?error=UNKNOWN_ERR&message={str(e)}")
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from snu_toto.app.common.exceptions import SnutotoException
 
 class BadAuthHeaderException(SnutotoException):
@@ -87,4 +88,16 @@ class RateLimitException(SnutotoException):
             status_code=429,
             error_code="ERR_021",
             error_msg="TOO MANY REQUESTS"
+        )
+
+class SuspendedUserException(SnutotoException):
+    def __init__(self, suspension_reason: str, suspended_until: datetime):
+        super().__init__(
+            status_code=403,
+            error_code="ERR_046",
+            error_msg="USER SUSPENDED",
+            detail= {
+                "suspension_reason": suspension_reason,
+                "suspended_until": suspended_until
+            }
         )

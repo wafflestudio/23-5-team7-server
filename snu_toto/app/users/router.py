@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status, Query
-from typing import Optional
+from typing import Optional, Annotated
 
 from snu_toto.app.users.schemas import (
     UserSignupRequest, 
@@ -81,6 +81,13 @@ async def get_my_ranking(
 ) -> UserRankingResponse:
     """현재 로그인한 사용자의 랜킹 정보 조회"""
     return await user_service.get_my_ranking(user_id=current_user.user_id)
+@users_router.get("/ranking", status_code=200)
+async def get_user_ranking(
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    user_service: UserService = Depends(get_user_service)
+)->UserRankingResponse:
+    """포인트 상위 유저 랭킹 조회"""
+    return await user_service.get_top_users_with_total(limit)
 
 ##################################################################################
 
