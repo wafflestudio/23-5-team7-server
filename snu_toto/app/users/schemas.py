@@ -137,6 +137,16 @@ class UserRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
     rankings: List[UserRankItem]
       
+# 닉네임 변경용 스키마
+class UpdateNicknameRequest(BaseModel):
+    """닉네임 변경 요청"""
+    nickname: str = Field(..., min_length=2, max_length=20)
+
+class UpdateNicknameResponse(BaseModel):
+    """닉네임 변경 응답"""
+    message: str
+    nickname: str
+
 class UserRoleUpdateRequest(BaseModel):
     role: UserRole = Field(...)
 

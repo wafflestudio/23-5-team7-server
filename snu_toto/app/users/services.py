@@ -157,6 +157,27 @@ class UserService:
         """
         ranking_data = await self.user_repo.get_user_ranking(user_id)
         return UserRankingResponse(**ranking_data)
+
+    async def update_nickname(self, user_id: str, request) -> dict:
+        """
+        사용자 닉네임 변경
+        """
+        from snu_toto.app.users.exceptions import NicknameAlreadyExistsException
+        
+        # 닉네임 중복 체크 (자기 자신 제외)
+        existing_user = await self.user_repo.get_by_nickname(request.nickname)
+        if existing_user and existing_user.user_id != user_id:
+            raise NicknameAlreadyExistsException()
+        
+        # 사용자 조회 및 닉네임 업데이트
+        user = await self.user_repo.get_by_id(user_id)
+        user.nickname = request.nickname
+        await self.user_repo.update_user(user)
+        
+        return {
+            "message": "닉네임이 성공적으로 변경되었습니다.",
+            "nickname": request.nickname
+        }
       
     async def get_top_users_with_total(self, limit: int) -> UserRankingResponse:
         # 전체 유저 수 조회 (순위에 포함될 대상)
