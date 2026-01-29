@@ -63,3 +63,11 @@ class UserNotFoundError(SnutotoException):
             error_code="ERR_042",
             error_msg="USER NOT FOUND"
         )
+
+class SocialAccountNoPasswordException(SnutotoException):
+    def __init__(self):
+        super().__init__(
+            status_code=400,
+            error_code="ERR_047",
+            error_msg="SOCIAL ACCOUNT NO PASSWORD"
+        )

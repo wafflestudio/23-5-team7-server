@@ -250,6 +250,12 @@ class UserRepository:
             }
         finally:
             await redis.close()
+    
+    async def update_user(self, user: User) -> User:
+        """사용자 정보 업데이트"""
+        await self.db.flush()
+        return user
+    
     async def update_user_role(self, user_id: str, new_role: str) -> None:
         """유저의 역할을 업데이트"""
         await self.db.execute(
