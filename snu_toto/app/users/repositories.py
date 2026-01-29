@@ -2,7 +2,7 @@ from typing import Annotated, Optional, List
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, update
+from sqlalchemy import desc, func, update
 from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
@@ -319,3 +319,14 @@ class UserRepository:
         self.db.add(withdrawal)
         
         await self.db.commit()
+    
+    async def get_latest_withdrawal_by_hash(self, hashed_email: str) -> UserWithdrawal | None:
+        """이메일 해시로 가장 최근 탈퇴 이력 조회"""
+        query = (
+            select(UserWithdrawal)
+            .where(UserWithdrawal.hashed_email == hashed_email)
+            .order_by(desc(UserWithdrawal.deleted_at))
+            .limit(1)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()

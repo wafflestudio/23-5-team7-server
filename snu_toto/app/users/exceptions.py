@@ -63,3 +63,14 @@ class UserNotFoundError(SnutotoException):
             error_code="ERR_042",
             error_msg="USER NOT FOUND"
         )
+    
+class ReRegistrationLimitException(SnutotoException):
+    def __init__(self, remaining_days: int):
+        super().__init__(
+            status_code=409,
+            error_code="ERR_051",
+            error_msg="WITHDRAWAL COOLDOWN PERIOD",
+            detail= {
+                "remaining_days": remaining_days
+            }
+        )

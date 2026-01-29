@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -16,11 +17,12 @@ from snu_toto.app.users.schemas import (
     UserRankingResponse,
     UserTopRankingResponse
 )
-from snu_toto.app.core.security import get_password_hash
+from snu_toto.app.core.security import get_email_hash, get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
     EmailAlreadyExistsException, 
-    NicknameAlreadyExistsException, 
+    NicknameAlreadyExistsException,
+    ReRegistrationLimitException, 
     SocialIdAlreadyExistsException
 )
 from snu_toto.app.bets.models import BetStatus
@@ -31,6 +33,23 @@ class UserService:
         self.db = db
 
     async def signup(self, user_in: UserSignupRequest) -> User:
+        # 1. 재가입 제한 기간 확인 (30일)
+        hashed_email = get_email_hash(user_in.email)
+        withdrawal_record = await self.user_repo.get_latest_withdrawal_by_hash(hashed_email)
+        
+        if withdrawal_record:
+            cooldown_period = timedelta(days=30)
+            # 현재 시각과 탈퇴 시각 비교
+            now_utc = datetime.now()
+            
+            # 만약 탈퇴 시점으로부터 30일이 지나지 않았다면
+            if now_utc - withdrawal_record.deleted_at < cooldown_period:
+                # 남은 일수 계산
+                remaining_time = (withdrawal_record.deleted_at + cooldown_period) - now_utc
+                remaining_days = remaining_time.days + (1 if remaining_time.seconds > 0 else 0)
+
+                raise ReRegistrationLimitException(remaining_days=remaining_days)
+            
         # 중복 검증 (Repository 이용)
         if await self.user_repo.get_by_email(user_in.email):
             raise EmailAlreadyExistsException()
