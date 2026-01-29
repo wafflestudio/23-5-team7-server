@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 from httpx import AsyncClient, ASGITransport
+from unittest.mock import AsyncMock
 
 import os
 
@@ -249,6 +250,21 @@ def event_create_data() -> dict:
 
 
 # =============================================================================
+# Mock Services
+# =============================================================================
+@pytest.fixture
+def mock_verification_service():
+    """인증 서비스 Mock"""
+    from snu_toto.app.auth.services import VerificationService
+    mock = AsyncMock(spec=VerificationService)
+    # Default behaviors
+    mock.check_rate_limit.return_value = True
+    mock.create_verification_code.return_value = "123456"
+    mock.verify_code.return_value = True
+    return mock
+
+
+# =============================================================================
 # 헬퍼 함수
 # =============================================================================
 def auth_header(token: str) -> dict:
@@ -271,3 +287,18 @@ def assert_error_response(response, status_code: int, error_code: str):
     assert response.status_code == status_code
     data = response.json()
     assert data.get("error_code") == error_code, f"Expected {error_code}, got {data}"
+
+
+# =============================================================================
+# 공통 헬퍼 (Multipart 등)
+# =============================================================================
+def multipart_headers(token: str):
+    # httpx handles boundary when files is passed, but we also need Auth
+    return {"Authorization": f"Bearer {token}"}
+
+# We need to pass 'files' to httpx to trigger multipart/form-data.
+# Passing an empty dict might not trigger it if data is present.
+# We pass a dummy file field that won't be used by the backend logic 
+# (since image_files matches by name 'image_files' and this is 'ignore').
+EMPTY_FILES = {"ignore_me": ("ignore.txt", b"", "text/plain")} 
+

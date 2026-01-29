@@ -3,18 +3,7 @@ import pytest
 from httpx import AsyncClient
 import json
 from datetime import datetime, timedelta
-from snu_toto.tests.conftest import auth_header, assert_error_response
-
-# Helper to force multipart
-def multipart_headers(token: str):
-    # httpx handles boundary when files is passed, but we also need Auth
-    return {"Authorization": f"Bearer {token}"}
-
-# We need to pass 'files' to httpx to trigger multipart/form-data.
-# Passing an empty dict might not trigger it if data is present.
-# We pass a dummy file field that won't be used by the backend logic 
-# (since image_files matches by name 'image_files' and this is 'ignore').
-EMPTY_FILES = {"ignore_me": ("ignore.txt", b"", "text/plain")} 
+from snu_toto.tests.conftest import auth_header, assert_error_response, multipart_headers, EMPTY_FILES
 
 # =============================================================================
 # 1. 이벤트 생성 (POST /api/events)
