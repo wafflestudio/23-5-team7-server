@@ -147,6 +147,16 @@ class UpdateNicknameResponse(BaseModel):
     message: str
     nickname: str
 
+# 비밀번호 변경용 스키마
+class UpdatePasswordRequest(BaseModel):
+    """비밀번호 변경 요청"""
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=20)
+
+class UpdatePasswordResponse(BaseModel):
+    """비밀번호 변경 응답"""
+    message: str
+
 class UserRoleUpdateRequest(BaseModel):
     role: UserRole = Field(...)
 

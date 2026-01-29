@@ -10,7 +10,9 @@ from snu_toto.app.users.schemas import (
     UserStatsResponse,
     UserRankingResponse,
     UpdateNicknameRequest,
-    UpdateNicknameResponse
+    UpdateNicknameResponse,
+    UpdatePasswordRequest,
+    UpdatePasswordResponse
 )
 from snu_toto.app.users.services import UserService
 from snu_toto.app.users.dependencies import get_user_service
@@ -83,6 +85,7 @@ async def get_my_ranking(
 ) -> UserRankingResponse:
     """현재 로그인한 사용자의 랜킹 정보 조회"""
     return await user_service.get_my_ranking(user_id=current_user.user_id)
+
 @users_router.patch("/me/nickname", status_code=status.HTTP_200_OK)
 async def update_my_nickname(
     request: UpdateNicknameRequest,
@@ -92,6 +95,17 @@ async def update_my_nickname(
     """현재 로그인한 사용자의 닉네임 변경"""
     result = await user_service.update_nickname(user_id=current_user.user_id, request=request)
     return UpdateNicknameResponse(**result)
+
+@users_router.patch("/me/password", status_code=status.HTTP_200_OK)
+async def update_my_password(
+    request: UpdatePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+) -> UpdatePasswordResponse:
+    """현재 로그인한 사용자의 비밀번호 변경"""
+    result = await user_service.update_password(user_id=current_user.user_id, request=request)
+    return UpdatePasswordResponse(**result)
+
 @users_router.get("/ranking", status_code=200)
 async def get_user_ranking(
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,

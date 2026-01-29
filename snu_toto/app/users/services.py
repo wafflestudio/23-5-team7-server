@@ -13,7 +13,9 @@ from snu_toto.app.users.schemas import (
     UserStatsResponse,
     UserPointsStats,
     UserBetsStats,
-    UserRankingResponse
+    UserRankingResponse,
+    UpdatePasswordRequest,
+    UpdatePasswordResponse
 )
 from snu_toto.app.core.security import get_password_hash
 from snu_toto.app.users.repositories import UserRepository
@@ -177,6 +179,33 @@ class UserService:
         return {
             "message": "닉네임이 성공적으로 변경되었습니다.",
             "nickname": request.nickname
+        }
+
+    async def update_password(self, user_id: str, request) -> dict:
+        """
+        사용자 비밀번호 변경
+        """
+        from snu_toto.app.auth.exceptions import InvalidCredentialsException
+        from snu_toto.app.users.exceptions import SocialAccountNoPasswordException
+        from snu_toto.app.core.security import verify_password, get_password_hash
+        
+        # 사용자 조회
+        user = await self.user_repo.get_by_id(user_id)
+        
+        # 소셜 로그인 계정 체크
+        if user.social_type != SocialType.LOCAL or not user.hashed_password:
+            raise SocialAccountNoPasswordException()
+        
+        # 현재 비밀번호 검증
+        if not verify_password(request.current_password, user.hashed_password):
+            raise InvalidCredentialsException()
+        
+        # 새 비밀번호로 변경
+        user.hashed_password = get_password_hash(request.new_password)
+        await self.user_repo.update_user(user)
+        
+        return {
+            "message": "비밀번호가 성공적으로 변경되었습니다."
         }
       
     async def get_top_users_with_total(self, limit: int) -> UserRankingResponse:
