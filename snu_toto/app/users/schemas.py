@@ -135,6 +135,7 @@ class UserRankItem(BaseModel):
 
 class UserTopRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
+    updated_at: datetime
     rankings: List[UserRankItem]
       
 class UserRoleUpdateRequest(BaseModel):

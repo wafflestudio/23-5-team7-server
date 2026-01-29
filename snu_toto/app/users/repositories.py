@@ -250,6 +250,26 @@ class UserRepository:
             }
         finally:
             await redis.close()
+    
+    async def get_global_ranking_data(self) -> dict:
+        """Redis에서 전체 유저 수와 상위 랭킹 리스트를 가져옴"""
+        from redis.asyncio import from_url
+        from snu_toto.app.core.config import REDIS_SETTINGS
+        import json
+
+        redis = await from_url(REDIS_SETTINGS.URL, decode_responses=True)
+        try:
+            keys = ["ranking:total_count", "ranking:top_list", "ranking:updated_at"]
+            values = await redis.mget(keys)
+            
+            return {
+                "total_count": int(values[0]) if values[0] else 0,
+                "top_list": json.loads(values[1]) if values[1] else [],
+                "updated_at": values[2] if values[2] else datetime.now().isoformat()
+            }
+        finally:
+            await redis.close()
+
     async def update_user_role(self, user_id: str, new_role: str) -> None:
         """유저의 역할을 업데이트"""
         await self.db.execute(
@@ -289,6 +309,7 @@ class UserRepository:
         user.hashed_password = None
         user.social_id = None
         user.is_deleted = True
+        user.points = 0
 
         # 탈퇴 이력 추가
         withdrawal = UserWithdrawal(

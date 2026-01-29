@@ -161,24 +161,12 @@ class UserService:
         return UserRankingResponse(**ranking_data)
       
     async def get_top_users_with_total(self, limit: int) -> UserTopRankingResponse:
-        # 전체 유저 수 조회 (순위에 포함될 대상)
-        total_query = select(func.count(User.user_id))
-        total_res = await self.db.execute(total_query)
-        total_count = total_res.scalar()
+        """Redis에 캐싱된 글로벌 랭킹 정보를 반환 (limit에 따른 슬라이싱)"""
+        # Redis에서 데이터 로드
+        ranking_data = await self.user_repo.get_global_ranking_data()
 
-        # 랭킹 데이터 조회 (포인트 내림차순, 동점 시 ID 오름차순으로 고정)
-        ranking_query = (
-            select(User)
-            .order_by(User.points.desc(), User.user_id.asc())
-            .limit(limit)
+        return UserTopRankingResponse(
+            total_count=ranking_data["total_count"],
+            updated_at=ranking_data["updated_at"],
+            rankings=ranking_data["top_list"][:limit]
         )
-        ranking_res = await self.db.execute(ranking_query)
-        users = ranking_res.scalars().all()
-
-        # 순위 부여
-        rankings = [
-            {"rank": i + 1, "nickname": u.nickname, "points": u.points}
-            for i, u in enumerate(users)
-        ]
-
-        return UserTopRankingResponse(total_count=total_count, rankings=rankings)

@@ -82,6 +82,7 @@ async def get_my_ranking(
 ) -> UserRankingResponse:
     """현재 로그인한 사용자의 랜킹 정보 조회"""
     return await user_service.get_my_ranking(user_id=current_user.user_id)
+
 @users_router.get("/ranking", status_code=200)
 async def get_user_ranking(
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
