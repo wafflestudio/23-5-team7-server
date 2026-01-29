@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from snu_toto.app.bets.models import Bet
     from snu_toto.app.events.models import Event
+    from snu_toto.app.comments.models import Comment
 
 class UserRole(str, enum.Enum):
     """관리자 여부를 위한 Enum"""
@@ -127,6 +128,7 @@ class User(Base):
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="user")
     created_events: Mapped[list["Event"]] = relationship("Event", back_populates="creator")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="user")
 
     __table_args__ = (
         CheckConstraint("points >= 0", name="check_points_positive"),

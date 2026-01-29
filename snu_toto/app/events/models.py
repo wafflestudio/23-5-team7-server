@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from snu_toto.app.users.models import User
     from snu_toto.app.bets.models import Bet
+    from snu_toto.app.comments.models import Comment
 
 class EventStatus(str, enum.Enum):
     """이벤트 상태를 위한 Enum"""
@@ -78,6 +79,7 @@ class Event(Base):
     images: Mapped[list["EventImage"]] = relationship("EventImage", back_populates="event")
     creator: Mapped["User"] = relationship("User", back_populates="created_events")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="event")
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="event")
 
     __table_args__ = (
         CheckConstraint("CHAR_LENGTH(title) >= 5", name="check_event_title_length"),
