@@ -8,6 +8,7 @@ from jose import jwt, JWTError
 
 from snu_toto.app.core.config import AUTH_SETTINGS, REDIS_SETTINGS
 from snu_toto.app.core.database import get_db_session
+from snu_toto.app.core.security import decode_jwt_token
 from snu_toto.app.events.exceptions import NotAdminError
 from snu_toto.app.users.models import User, UserRole
 from snu_toto.app.users.repositories import UserRepository
@@ -53,11 +54,7 @@ async def get_current_unverified_user(
     token = token_obj.credentials
 
     try:
-        payload = jwt.decode(
-            token, 
-            AUTH_SETTINGS.ACCESS_TOKEN_SECRET, 
-            algorithms=["HS256"]
-        )
+        payload = decode_jwt_token(token, AUTH_SETTINGS.ACCESS_TOKEN_SECRET)
         user_id: str = payload.get("sub")
         purpose: str = payload.get("purpose")
 
@@ -79,6 +76,7 @@ async def get_current_unverified_user(
 async def get_current_user(
     token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db_session),
+    v_service: VerificationService = Depends(get_verification_service),
     auth_service: AuthService = Depends(get_auth_service)
 ) -> User:
     """유효한 액세스 토큰을 확인하여 현재 로그인한 유저 객체 반환"""
@@ -91,12 +89,11 @@ async def get_current_user(
 
     token = token_obj.credentials
 
+    if await v_service.is_token_blacklisted(token):
+        raise InvalidTokenException()
+
     try:
-        payload = jwt.decode(
-            token, 
-            AUTH_SETTINGS.ACCESS_TOKEN_SECRET, 
-            algorithms=["HS256"]
-        )
+        payload = decode_jwt_token(token, AUTH_SETTINGS.ACCESS_TOKEN_SECRET)
         user_id: str = payload.get("sub")
         purpose: str = payload.get("purpose")
 

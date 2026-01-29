@@ -1,11 +1,13 @@
+from typing import Annotated
 from urllib.parse import urlencode
-from fastapi import APIRouter, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, Cookie, Depends, Query, BackgroundTasks, Request, Response
 from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from snu_toto.app.auth.schemas import EmailConfirmRequest, EmailConfirmResponse, EmailSendResponse, GoogleAuthResponse, LoginRequest, LoginResponse
+from snu_toto.app.auth.schemas import EmailConfirmRequest, EmailConfirmResponse, EmailSendResponse, GoogleAuthResponse, LoginRequest, LoginResponse, UserLoginResult
 from snu_toto.app.auth.services import AuthService, VerificationService
-from snu_toto.app.auth.exceptions import GoogleAuthFailedException, MissingCodeException
-from snu_toto.app.auth.dependencies import get_auth_service, google_client
+from snu_toto.app.auth.exceptions import BadAuthHeaderException, GoogleAuthFailedException, MissingCodeException, UnauthenticatedException
+from snu_toto.app.auth.dependencies import get_auth_service, google_client, security
 from snu_toto.app.auth.dependencies import get_current_unverified_user, get_verification_service
 from snu_toto.app.auth.utils import EmailSender
 from snu_toto.app.common.exceptions import SnutotoException
@@ -16,6 +18,7 @@ from snu_toto.app.auth.exceptions import (
     RateLimitException,
     InvalidCodeException,
 )
+from snu_toto.app.core.security import get_token_remaining_seconds
 
 auth_router = APIRouter()
 
@@ -158,3 +161,64 @@ async def login(
 ):
     """일반 로그인"""
     return await auth_service.authenticate_user(body.email, body.password)
+
+@auth_router.post("/refresh")
+async def refresh_access_token(
+    response: Response,
+    refresh_token: Annotated[str | None, Cookie()] = None,
+    auth_service: AuthService = Depends(get_auth_service)
+)-> LoginResponse:
+    """리프레시 토큰으로 새로운 액세스 토큰 발급"""    
+    if not refresh_token:
+        raise UnauthenticatedException()
+
+    new_access, new_refresh, user = await auth_service.refresh_tokens(refresh_token)
+
+    response.set_cookie(key="access_token", value=new_access, httponly=True, secure=True, samesite="none")
+    response.set_cookie(key="refresh_token", value=new_refresh, httponly=True, secure=True, samesite="none")
+
+    return LoginResponse(
+        access_token=new_access,
+        refresh_token=new_refresh,
+        user=UserLoginResult(
+            user_id=user.user_id,
+            nickname=user.nickname,
+            is_snu_verified=user.is_snu_verified,
+            points=user.points
+        )
+    )
+
+@auth_router.post("/logout")
+async def logout(
+    response: Response,
+    token_obj: HTTPAuthorizationCredentials = Depends(security),
+    refresh_token: Annotated[str | None, Cookie()] = None,
+    v_service: VerificationService = Depends(get_verification_service)
+):
+    if token_obj is None:
+        raise UnauthenticatedException()
+    
+    if token_obj.scheme.lower() != "bearer":
+        raise BadAuthHeaderException()
+    
+    if not refresh_token:
+       print(refresh_token)
+       raise UnauthenticatedException()
+    
+    # 액세스 토큰 블랙리스트
+    access_token = token_obj.credentials
+    acc_rem_sec = get_token_remaining_seconds(access_token, AUTH_SETTINGS.ACCESS_TOKEN_SECRET)
+    if acc_rem_sec > 0:
+        await v_service.blacklist_token(access_token, acc_rem_sec)
+
+    # 리프레시 토큰 블랙리스트
+    if refresh_token:
+        ref_rem_sec = get_token_remaining_seconds(refresh_token, AUTH_SETTINGS.REFRESH_TOKEN_SECRET)
+        if ref_rem_sec > 0:
+            await v_service.blacklist_token(refresh_token, ref_rem_sec)
+
+    # 브라우저 쿠키 삭제
+    response.delete_cookie(key="access_token", path="/", samesite="none", secure=True)
+    response.delete_cookie(key="refresh_token", path="/", samesite="none", secure=True)
+
+    return {"message": "성공적으로 로그아웃 되었습니다."}

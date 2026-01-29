@@ -1,12 +1,14 @@
 from datetime import datetime
 import random
 import string
+import jwt
 from redis.asyncio import Redis
 
-from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, InvalidCredentialsException, SuspendedUserException
+from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, InvalidCredentialsException, InvalidTokenException, SuspendedUserException
 from snu_toto.app.auth.providers.google import GoogleAuthClient
 from snu_toto.app.auth.schemas import GoogleAuthResponse, GoogleUserResult, LoginResponse, UserLoginResult
-from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, verify_password
+from snu_toto.app.core.config import AUTH_SETTINGS
+from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, decode_jwt_token, verify_password
 from snu_toto.app.users.exceptions import EmailAlreadyExistsException, OnlySnuEmailAllowedException
 from snu_toto.app.users.models import User
 from snu_toto.app.users.repositories import UserRepository
@@ -100,6 +102,36 @@ class AuthService:
         
         # 기한 만료 시 복구
         await self.user_repo.clear_suspension(user)
+    
+    async def refresh_tokens(self, refresh_token: str):
+        """리프레시 토큰 검증 및 새로운 토큰 쌍 발급"""
+        try:
+            # security 유틸리티를 사용하여 토큰 해독
+            payload = decode_jwt_token(refresh_token, AUTH_SETTINGS.REFRESH_TOKEN_SECRET)
+            
+            user_id = payload.get("sub")
+            purpose = payload.get("purpose")
+
+            # 용도 확인
+            if purpose != "refresh":
+                raise InvalidTokenException()
+
+            # DB 작업
+            user = await self.user_repo.get_by_id(user_id)
+            if not user:
+                raise InvalidTokenException()
+
+            # 정지 여부 확인
+            await self._check_user_suspension(user)
+
+            # 새로운 토큰 생성
+            new_access = create_login_access_token(user.user_id)
+            new_refresh = create_refresh_token(user.user_id)
+
+            return new_access, new_refresh, user
+
+        except jwt.JWTError:
+            raise InvalidTokenException()
 
 class VerificationService:
     def __init__(self, redis: Redis):
@@ -146,3 +178,13 @@ class VerificationService:
             return True
             
         return False
+
+    async def blacklist_token(self, token: str, expires_in: int):
+        """토큰을 블랙리스트에 등록 (TTL은 토큰의 남은 수명만큼)"""
+        key = f"blacklist:{token}"
+        await self.redis.setex(key, expires_in, "revoked")
+
+    async def is_token_blacklisted(self, token: str) -> bool:
+        """해당 토큰이 블랙리스트에 있는지 확인"""
+        key = f"blacklist:{token}"
+        return await self.redis.exists(key)
