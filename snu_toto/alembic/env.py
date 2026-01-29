@@ -15,6 +15,7 @@ sys.path.append(os.path.join(os.getcwd(), "snu_toto"))
 # Alembic을 통해 인식돼야 하는 모델
 from snu_toto.app.core.database import Base # 모든 models.py가 동일한 절대 경로를 사용해야 Base를 같은 것으로 인식
 from app.core.config import DB_SETTINGS
+from app.comments.models import Comment  # Comment를 먼저 import
 from app.users.models import User, PointHistory
 from app.events.models import Event, EventOption, EventImage
 from app.bets.models import Bet

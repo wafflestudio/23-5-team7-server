@@ -56,8 +56,8 @@ class Comment(Base):
     )
     
     # 관계
-    user: Mapped["User"] = relationship("User", back_populates="comments")
-    event: Mapped["Event"] = relationship("Event", back_populates="comments")
+    user: Mapped["User"] = relationship("User")
+    event: Mapped["Event"] = relationship("Event")
 
     # 인덱스 (조회 성능 최적화)
     __table_args__ = (

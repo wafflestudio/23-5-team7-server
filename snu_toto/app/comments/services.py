@@ -1,9 +1,16 @@
+import base64
 import uuid
-from typing import Annotated
+from typing import Annotated, Optional
+from datetime import datetime
 from fastapi import Depends
 from snu_toto.app.comments.models import Comment
 from snu_toto.app.comments.repositories import CommentRepository
-from snu_toto.app.comments.schemas import CommentCreateRequest, CommentResponse
+from snu_toto.app.comments.schemas import (
+    CommentCreateRequest,
+    CommentResponse,
+    CommentListResponse
+)
+from snu_toto.app.comments.exceptions import InvalidCursorException
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.events.exceptions import EventNotFoundError
 
@@ -47,4 +54,64 @@ class CommentService:
             content=created_comment.content,
             created_at=created_comment.created_at,
             updated_at=created_comment.updated_at
+        )
+
+    async def get_comments(
+        self,
+        event_id: str,
+        cursor: Optional[str] = None,
+        limit: int = 20
+    ) -> CommentListResponse:
+        """댓글 목록 조회 (커서 기반 페이지네이션)"""
+        # 이벤트 존재 확인
+        event = await self.event_repo.get_event_by_id(event_id)
+        if not event:
+            raise EventNotFoundError()
+        
+        # 커서 디코딩
+        cursor_created_at = None
+        cursor_comment_id = None
+        
+        if cursor:
+            try:
+                decoded = base64.urlsafe_b64decode(cursor.encode()).decode()
+                created_at_str, comment_id = decoded.split('_', 1)
+                cursor_created_at = datetime.fromisoformat(created_at_str)
+                cursor_comment_id = comment_id
+            except Exception:
+                raise InvalidCursorException()
+        
+        # 댓글 조회
+        comments, has_more = await self.comment_repo.get_comments_by_event_id_with_cursor(
+            event_id=event_id,
+            cursor_created_at=cursor_created_at,
+            cursor_comment_id=cursor_comment_id,
+            limit=limit
+        )
+        
+        # 응답 생성
+        comment_responses = [
+            CommentResponse(
+                comment_id=comment.comment_id,
+                event_id=comment.event_id,
+                user_id=comment.user_id,
+                nickname=comment.user.nickname,
+                content=comment.content,
+                created_at=comment.created_at,
+                updated_at=comment.updated_at
+            )
+            for comment in comments
+        ]
+        
+        # next_cursor 생성
+        next_cursor = None
+        if has_more and comments:
+            last_comment = comments[-1]
+            cursor_data = f"{last_comment.created_at.isoformat()}_{last_comment.comment_id}"
+            next_cursor = base64.urlsafe_b64encode(cursor_data.encode()).decode()
+        
+        return CommentListResponse(
+            comments=comment_responses,
+            next_cursor=next_cursor,
+            has_more=has_more
         )
