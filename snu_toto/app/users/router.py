@@ -8,7 +8,8 @@ from snu_toto.app.users.schemas import (
     UserPointHistoryResponse,
     UserProfileResponse,
     UserStatsResponse,
-    UserRankingResponse
+    UserRankingResponse,
+    UserTopRankingResponse
 )
 from snu_toto.app.users.services import UserService
 from snu_toto.app.users.dependencies import get_user_service
@@ -85,7 +86,7 @@ async def get_my_ranking(
 async def get_user_ranking(
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
     user_service: UserService = Depends(get_user_service)
-)->UserRankingResponse:
+)->UserTopRankingResponse:
     """포인트 상위 유저 랭킹 조회"""
     return await user_service.get_top_users_with_total(limit)
 

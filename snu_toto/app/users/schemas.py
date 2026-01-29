@@ -133,7 +133,7 @@ class UserRankItem(BaseModel):
     nickname: str
     points: int
 
-class UserRankingResponse(BaseModel):
+class UserTopRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
     rankings: List[UserRankItem]
       

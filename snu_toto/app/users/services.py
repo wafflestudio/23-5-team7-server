@@ -13,7 +13,8 @@ from snu_toto.app.users.schemas import (
     UserStatsResponse,
     UserPointsStats,
     UserBetsStats,
-    UserRankingResponse
+    UserRankingResponse,
+    UserTopRankingResponse
 )
 from snu_toto.app.core.security import get_password_hash
 from snu_toto.app.users.repositories import UserRepository
@@ -159,7 +160,7 @@ class UserService:
         ranking_data = await self.user_repo.get_user_ranking(user_id)
         return UserRankingResponse(**ranking_data)
       
-    async def get_top_users_with_total(self, limit: int) -> UserRankingResponse:
+    async def get_top_users_with_total(self, limit: int) -> UserTopRankingResponse:
         # 전체 유저 수 조회 (순위에 포함될 대상)
         total_query = select(func.count(User.user_id))
         total_res = await self.db.execute(total_query)
@@ -180,4 +181,4 @@ class UserService:
             for i, u in enumerate(users)
         ]
 
-        return UserRankingResponse(total_count=total_count, rankings=rankings)
+        return UserTopRankingResponse(total_count=total_count, rankings=rankings)
