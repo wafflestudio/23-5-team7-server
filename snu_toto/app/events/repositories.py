@@ -91,9 +91,13 @@ class EventRepositories:
         await self.session.refresh(event)
         return event
 
-    async def update_event_status(self, event_id: str, new_status: EventStatus) -> None:
-        """이벤트의 상태를 업데이트"""
-        result = await self.session.execute(update(Event).where(Event.event_id == event_id).values(status=new_status))
+    async def update_event_fields(self, event_id: str, update_data: dict) -> None:
+        """이벤트의 여러 필드를 한 번에 업데이트 (status, start_at, end_at 등)"""
+        result = await self.session.execute(
+            update(Event)
+            .where(Event.event_id == event_id)
+            .values(**update_data)
+        )
         
         # rowcount를 통해 실제 업데이트된 행이 있는지 확인
         if result.rowcount <= 0:
