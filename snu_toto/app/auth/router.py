@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.auth.schemas import EmailConfirmRequest, EmailConfirmResponse, EmailSendResponse, GoogleAuthResponse, LoginRequest, LoginResponse, UserLoginResult
 from snu_toto.app.auth.services import AuthService, VerificationService
 from snu_toto.app.auth.exceptions import BadAuthHeaderException, GoogleAuthFailedException, MissingCodeException, UnauthenticatedException
-from snu_toto.app.auth.dependencies import get_auth_service, google_client, security
+from snu_toto.app.auth.dependencies import get_auth_service, get_current_user, google_client, security
 from snu_toto.app.auth.dependencies import get_current_unverified_user, get_verification_service
 from snu_toto.app.auth.utils import EmailSender
 from snu_toto.app.common.exceptions import SnutotoException
@@ -19,6 +19,7 @@ from snu_toto.app.auth.exceptions import (
     InvalidCodeException,
 )
 from snu_toto.app.core.security import get_token_remaining_seconds
+from snu_toto.app.users.models import User
 
 auth_router = APIRouter()
 
@@ -202,7 +203,6 @@ async def logout(
         raise BadAuthHeaderException()
     
     if not refresh_token:
-       print(refresh_token)
        raise UnauthenticatedException()
     
     # 액세스 토큰 블랙리스트
@@ -222,3 +222,39 @@ async def logout(
     response.delete_cookie(key="refresh_token", path="/", samesite="none", secure=True)
 
     return {"message": "성공적으로 로그아웃 되었습니다."}
+
+@auth_router.post("/withdraw")
+async def withdraw(
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    token_obj: HTTPAuthorizationCredentials = Depends(security),
+    refresh_token: Annotated[str | None, Cookie()] = None,
+    auth_service: AuthService = Depends(get_auth_service),
+    v_service: VerificationService = Depends(get_verification_service)
+):
+    """회원 탈퇴"""
+    await auth_service.execute_withdrawal(current_user)
+
+    if token_obj is None:
+        raise UnauthenticatedException()
+    
+    if not refresh_token:
+       raise UnauthenticatedException()
+
+    # 액세스 토큰 블랙리스트
+    acc_token = token_obj.credentials
+    acc_rem_sec = get_token_remaining_seconds(acc_token, AUTH_SETTINGS.ACCESS_TOKEN_SECRET)
+    if acc_rem_sec > 0:
+        await v_service.blacklist_token(acc_token, acc_rem_sec)
+
+    # 리프레시 토큰 블랙리스트
+    if refresh_token:
+        ref_rem = get_token_remaining_seconds(refresh_token, AUTH_SETTINGS.REFRESH_TOKEN_SECRET)
+        if ref_rem > 0:
+            await v_service.blacklist_token(refresh_token, ref_rem)
+
+    # 브라우저 쿠키 삭제
+    response.delete_cookie(key="access_token", path="/", httponly=True, samesite="none", secure=True)
+    response.delete_cookie(key="refresh_token", path="/", httponly=True, samesite="none", secure=True)
+
+    return {"message": "회원 탈퇴가 완료되었습니다. 30일 이내에는 동일한 이메일로 재가입이 불가능합니다."}

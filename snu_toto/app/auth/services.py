@@ -8,7 +8,7 @@ from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, Inv
 from snu_toto.app.auth.providers.google import GoogleAuthClient
 from snu_toto.app.auth.schemas import GoogleAuthResponse, GoogleUserResult, LoginResponse, UserLoginResult
 from snu_toto.app.core.config import AUTH_SETTINGS
-from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, decode_jwt_token, verify_password
+from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, decode_jwt_token, get_email_hash, verify_password
 from snu_toto.app.users.exceptions import EmailAlreadyExistsException, OnlySnuEmailAllowedException
 from snu_toto.app.users.models import User
 from snu_toto.app.users.repositories import UserRepository
@@ -132,6 +132,13 @@ class AuthService:
 
         except jwt.JWTError:
             raise InvalidTokenException()
+        
+    async def execute_withdrawal(self, user: User):
+        """회원탈퇴 비즈니스 프로세스 실행"""
+        # 이메일 해싱 처리
+        hashed_email = get_email_hash(user.email)
+        
+        await self.user_repo.anonymize_and_withdraw(user, hashed_email)
 
 class VerificationService:
     def __init__(self, redis: Redis):

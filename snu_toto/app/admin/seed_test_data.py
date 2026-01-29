@@ -111,7 +111,8 @@ async def create_test_users(session: AsyncSession) -> list[str]:
             social_type=user_data["social_type"],
             social_id=f"google_{user_data['nickname']}" if user_data["social_type"] == SocialType.GOOGLE else None,
             suspended_until=None,
-            suspension_reason=None
+            suspension_reason=None,
+            is_deleted=False
         )
         session.add(user)
         await session.flush()

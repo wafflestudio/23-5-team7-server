@@ -3,7 +3,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import func, update
-from snu_toto.app.users.models import User, PointHistory, PointReason
+from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
@@ -279,3 +279,22 @@ class UserRepository:
         user.suspended_until = None
         user.suspension_reason = None
         await self.db.flush()
+
+    async def anonymize_and_withdraw(self, user: User, hashed_email: str):
+        """유저 정보를 비식별화하고 탈퇴 이력을 한 트랜잭션으로 기록"""
+        # 유저 정보 비식별화 (Unique 제약 충돌 방지를 위해 UUID 활용)
+        unique_id = str(user.user_id)[:12]
+        user.email = f"deleted_{unique_id}_{datetime.now().timestamp()}@snu.ac.kr"
+        user.nickname = f"탈퇴유저_{unique_id}"
+        user.hashed_password = None
+        user.social_id = None
+        user.is_deleted = True
+
+        # 탈퇴 이력 추가
+        withdrawal = UserWithdrawal(
+            user_id=user.user_id,
+            hashed_email=hashed_email
+        )
+        self.db.add(withdrawal)
+        
+        await self.db.commit()

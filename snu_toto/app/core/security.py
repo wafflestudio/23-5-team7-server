@@ -1,3 +1,4 @@
+import hashlib
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt
@@ -71,3 +72,8 @@ def get_token_remaining_seconds(token: str, secret: str) -> int:
         return max(seconds, 0)
     except jwt.JWTError:
         return 0
+
+def get_email_hash(email: str) -> str:
+    """이메일을 조회 가능한 형태로 해싱 (재가입 방지용)"""
+    clean_email = email.strip()
+    return hashlib.sha256(clean_email.encode()).hexdigest()
