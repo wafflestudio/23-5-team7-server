@@ -97,7 +97,7 @@ async def settle_event(
 ) -> EventSettleResponse:
     """이벤트를 정산"""
 
-    event = await service.settle_event(event_id, payload.winner_option_ids)
+    event = await service.settle_event(event_id, payload.winner_option_id)
     
     winners = [
         WinnerOptionDetail(option_id=opt.option_id, name=opt.name)

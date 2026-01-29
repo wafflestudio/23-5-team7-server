@@ -100,7 +100,7 @@ class EventListResponse(BaseModel):
     has_more: bool
     
 class EventSettleRequest(BaseModel):
-    winner_option_ids: List[str] = Field(...)
+    winner_option_id: List[str] = Field(...)
 
 class WinnerOptionDetail(BaseModel):
     option_id: str
