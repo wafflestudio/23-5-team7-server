@@ -56,3 +56,18 @@ class CommentRepository:
             comments = comments[:limit]
         
         return comments, has_more
+
+    async def get_comment_by_id(self, comment_id: str) -> Optional[Comment]:
+        """댓글 ID로 조회"""
+        result = await self.session.execute(
+            select(Comment)
+            .where(Comment.comment_id == comment_id)
+            .options(selectinload(Comment.user))
+        )
+        return result.scalar_one_or_none()
+
+    async def update_comment(self, comment: Comment) -> Comment:
+        """댓글 수정"""
+        await self.session.commit()
+        await self.session.refresh(comment)
+        return comment

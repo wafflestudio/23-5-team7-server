@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Query, status
 from snu_toto.app.comments.services import CommentService
 from snu_toto.app.comments.schemas import (
     CommentCreateRequest,
+    CommentUpdateRequest,
     CommentResponse,
     CommentListResponse
 )
@@ -39,4 +40,19 @@ async def get_comments(
         event_id=event_id,
         cursor=cursor,
         limit=limit
+    )
+
+
+@comment_router.patch("/comments/{comment_id}", status_code=status.HTTP_200_OK)
+async def update_comment(
+    comment_id: str,
+    data: CommentUpdateRequest,
+    service: Annotated[CommentService, Depends()],
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> CommentResponse:
+    """댓글 수정"""
+    return await service.update_comment(
+        comment_id=comment_id,
+        user_id=current_user.user_id,
+        data=data
     )

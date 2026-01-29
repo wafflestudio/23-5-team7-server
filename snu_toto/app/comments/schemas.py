@@ -14,6 +14,17 @@ class CommentCreateRequest(BaseModel):
             raise EmptyCommentContentException()
         return v
 
+class CommentUpdateRequest(BaseModel):
+    """댓글 수정 요청"""
+    content: str = Field(..., min_length=1, max_length=500)
+    
+    @field_validator('content')
+    @classmethod
+    def validate_content(cls, v: str):
+        if not v.strip():
+            raise EmptyCommentContentException()
+        return v
+
 class CommentResponse(BaseModel):
     """댓글 응답"""
     model_config = ConfigDict(from_attributes=True)

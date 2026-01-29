@@ -17,3 +17,21 @@ class InvalidCursorException(SnutotoException):
             error_code="ERR_037",
             error_msg="INVALID_CURSOR"
         )
+
+class CommentNotFoundException(SnutotoException):
+    """댓글을 찾을 수 없을 때"""
+    def __init__(self):
+        super().__init__(
+            status_code=404,
+            error_code="ERR_052",
+            error_msg="COMMENT NOT FOUND"
+        )
+
+class NotCommentOwnerException(SnutotoException):
+    """댓글 작성자가 아닐 때"""
+    def __init__(self):
+        super().__init__(
+            status_code=403,
+            error_code="ERR_053",
+            error_msg="NOT COMMENT OWNER"
+        )
