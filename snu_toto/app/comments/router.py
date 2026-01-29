@@ -56,3 +56,17 @@ async def update_comment(
         user_id=current_user.user_id,
         data=data
     )
+
+
+@comment_router.delete("/comments/{comment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_comment(
+    comment_id: str,
+    service: Annotated[CommentService, Depends()],
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> None:
+    """댓글 삭제"""
+    await service.delete_comment(
+        comment_id=comment_id,
+        user_id=current_user.user_id,
+        user_role=current_user.role
+    )

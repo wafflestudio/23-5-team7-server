@@ -23,7 +23,7 @@ class CommentNotFoundException(SnutotoException):
     def __init__(self):
         super().__init__(
             status_code=404,
-            error_code="ERR_052",
+            error_code="ERR_049",
             error_msg="COMMENT NOT FOUND"
         )
 
@@ -32,6 +32,6 @@ class NotCommentOwnerException(SnutotoException):
     def __init__(self):
         super().__init__(
             status_code=403,
-            error_code="ERR_053",
+            error_code="ERR_050",
             error_msg="NOT COMMENT OWNER"
         )

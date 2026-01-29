@@ -18,6 +18,7 @@ from snu_toto.app.comments.exceptions import (
 )
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.events.exceptions import EventNotFoundError
+from snu_toto.app.users.models import UserRole
 
 
 class CommentService:
@@ -152,3 +153,22 @@ class CommentService:
             created_at=updated_comment.created_at,
             updated_at=updated_comment.updated_at
         )
+
+    async def delete_comment(
+        self,
+        comment_id: str,
+        user_id: str,
+        user_role: UserRole
+    ) -> None:
+        """댓글 삭제"""
+        # 댓글 조회
+        comment = await self.comment_repo.get_comment_by_id(comment_id)
+        if not comment:
+            raise CommentNotFoundException()
+        
+        # 권한 확인 (작성자 본인 또는 관리자)
+        if comment.user_id != user_id and user_role != UserRole.ADMIN:
+            raise NotCommentOwnerException()
+        
+        # 삭제
+        await self.comment_repo.delete_comment(comment)
