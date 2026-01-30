@@ -9,7 +9,7 @@ from snu_toto.app.users.schemas import (
     UserProfileResponse,
     UserStatsResponse,
     UserRankingResponse,
-    UserTopRankingResponse
+    UserTopRankingResponse,
     UpdateNicknameRequest,
     UpdateNicknameResponse,
     UpdatePasswordRequest,

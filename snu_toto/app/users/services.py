@@ -15,7 +15,7 @@ from snu_toto.app.users.schemas import (
     UserPointsStats,
     UserBetsStats,
     UserRankingResponse,
-    UserTopRankingResponse
+    UserTopRankingResponse,
     UpdatePasswordRequest,
     UpdatePasswordResponse
 )
