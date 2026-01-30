@@ -73,6 +73,7 @@ class ReRegistrationLimitException(SnutotoException):
             detail= {
                 "remaining_days": remaining_days
             }
+        )
 
 class SocialAccountNoPasswordException(SnutotoException):
     def __init__(self):
