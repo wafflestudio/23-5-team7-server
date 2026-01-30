@@ -287,10 +287,10 @@ class EventServices:
             images=image_responses
         )
     
-    async def get_events(self, status: EventStatus | None = None) -> List[EventDetailResponse]:
+    async def get_events(self, status: EventStatus | None = None, user_id: str | None = None) -> List[EventDetailResponse]:
         """이벤트 목록 조회 (각 이벤트의 상세 정보 포함)"""
         events = await self.event_repositories.get_events(status)
-        return [await self.get_event_details(event.event_id) for event in events]
+        return [await self.get_event_details(event.event_id, user_id) for event in events]
     
     def _encode_cursor(self, end_at: datetime, event_id: str) -> str:
         """커서를 Base64로 인코딩"""
@@ -311,7 +311,8 @@ class EventServices:
         self,
         status: EventStatus | None = None,
         cursor: str | None = None,
-        limit: int = 10
+        limit: int = 10,
+        user_id: str | None = None
     ) -> EventListResponse:
         """커서 기반 페이지네이션으로 이벤트 목록 조회"""
         
@@ -334,8 +335,8 @@ class EventServices:
             limit=limit
         )
         
-        # 이벤트 상세 정보 생성
-        event_details = [await self.get_event_details(event.event_id) for event in events]
+        # 이벤트 상세 정보 생성 (좋아요 정보 포함)
+        event_details = [await self.get_event_details(event.event_id, user_id) for event in events]
         
         # next_cursor 생성
         next_cursor = None

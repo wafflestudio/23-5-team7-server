@@ -65,7 +65,8 @@ async def get_events(
     event_service: Annotated[EventServices, Depends()],
     status: EventStatus | None = Query(None),
     cursor: str | None = Query(None),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User | None = Depends(get_optional_current_user)
 ) -> EventListResponse:
     """이벤트 목록 조회 API (커서 기반 페이지네이션)"""
     
@@ -73,10 +74,12 @@ async def get_events(
     if limit < 1 or limit > 100:
         raise OutOfRangeError()
     
+    user_id = current_user.user_id if current_user else None
     return await event_service.get_events_paginated(
         status=status,
         cursor=cursor,
-        limit=limit
+        limit=limit,
+        user_id=user_id
     )
 
 @event_router.get("/{event_id}", status_code=200)
