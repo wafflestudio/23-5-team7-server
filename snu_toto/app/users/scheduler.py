@@ -20,6 +20,7 @@ async def update_all_rankings():
     매시 정각에 실행되는 배치 작업
     전체 유저의 랭킹을 계산하여 Redis에 저장
     """
+    updated_at = datetime.now().isoformat() # 배치 시작 시각 기록
     print(f"[{datetime.now()}] 랭킹 업데이트 시작...")
     
     # DB 연결
@@ -30,7 +31,8 @@ async def update_all_rankings():
         try:
             # 1. 전체 유저를 포인트 순으로 조회
             result = await session.execute(
-                select(User.user_id, User.points)
+                select(User.user_id, User.points, User.nickname)
+                .where(User.is_deleted == False) # 탈퇴 유저 제외
                 .order_by(User.points.desc())
             )
             users = result.all()
@@ -46,24 +48,33 @@ async def update_all_rankings():
             try:
                 # 3. 파이프라인으로 일괄 저장 (성능 최적화)
                 pipe = redis.pipeline()
+
+                # 다음 정각까지 유효 (남은 시간 계산)
+                now = datetime.now()
+                seconds_until_next_hour = 3600 - (now.minute * 60 + now.second)
+
+                # 글로벌 데이터: 전체 유저 수 저장
+                pipe.setex("ranking:total_count", seconds_until_next_hour, str(total_users))
+
+                # 글로벌 데이터: 상위 1000명 리스트 저장 (JSON)
+                top_rankings = [
+                    {"rank": i + 1, "nickname": u.nickname, "points": u.points}
+                    for i, u in enumerate(users[:1000])
+                ]
+                pipe.setex("ranking:top_list", seconds_until_next_hour, json.dumps(top_rankings))
                 
-                for rank, (user_id, points) in enumerate(users, start=1):
+                # 개인 데이터: 유저별 상세 랭킹 저장
+                for rank, (user_id, points, _) in enumerate(users, start=1):
                     ranking_data = {
                         "rank": rank,
                         "total_users": total_users,
                         "percentile": round(rank / total_users * 100, 1),
                         "my_points": points
                     }
-                    
-                    # 다음 정각까지 유효 (남은 시간 계산)
-                    now = datetime.now()
-                    seconds_until_next_hour = 3600 - (now.minute * 60 + now.second)
-                    
-                    pipe.setex(
-                        f"user_ranking:{user_id}",
-                        seconds_until_next_hour,
-                        json.dumps(ranking_data)
-                    )
+                    pipe.setex(f"user_ranking:{user_id}", seconds_until_next_hour, json.dumps(ranking_data))
+                
+                # 기준 시각 저장
+                pipe.setex("ranking:updated_at", seconds_until_next_hour, updated_at)
                 
                 # 4. 일괄 실행
                 await pipe.execute()

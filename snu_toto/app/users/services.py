@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -14,14 +15,16 @@ from snu_toto.app.users.schemas import (
     UserPointsStats,
     UserBetsStats,
     UserRankingResponse,
+    UserTopRankingResponse
     UpdatePasswordRequest,
     UpdatePasswordResponse
 )
-from snu_toto.app.core.security import get_password_hash
+from snu_toto.app.core.security import get_email_hash, get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
     EmailAlreadyExistsException, 
-    NicknameAlreadyExistsException, 
+    NicknameAlreadyExistsException,
+    ReRegistrationLimitException, 
     SocialIdAlreadyExistsException
 )
 from snu_toto.app.bets.models import BetStatus
@@ -32,6 +35,23 @@ class UserService:
         self.db = db
 
     async def signup(self, user_in: UserSignupRequest) -> User:
+        # 1. 재가입 제한 기간 확인 (30일)
+        hashed_email = get_email_hash(user_in.email)
+        withdrawal_record = await self.user_repo.get_latest_withdrawal_by_hash(hashed_email)
+        
+        if withdrawal_record:
+            cooldown_period = timedelta(days=30)
+            # 현재 시각과 탈퇴 시각 비교
+            now_utc = datetime.now()
+            
+            # 만약 탈퇴 시점으로부터 30일이 지나지 않았다면
+            if now_utc - withdrawal_record.deleted_at < cooldown_period:
+                # 남은 일수 계산
+                remaining_time = (withdrawal_record.deleted_at + cooldown_period) - now_utc
+                remaining_days = remaining_time.days + (1 if remaining_time.seconds > 0 else 0)
+
+                raise ReRegistrationLimitException(remaining_days=remaining_days)
+            
         # 중복 검증 (Repository 이용)
         if await self.user_repo.get_by_email(user_in.email):
             raise EmailAlreadyExistsException()
@@ -64,7 +84,8 @@ class UserService:
             social_type=user_in.social_type.value,
             social_id=social_id,
             suspended_until=None,
-            suspension_reason=None
+            suspension_reason=None,
+            is_deleted=False
         )
 
         await self.user_repo.create(new_user)
@@ -208,25 +229,13 @@ class UserService:
             "message": "비밀번호가 성공적으로 변경되었습니다."
         }
       
-    async def get_top_users_with_total(self, limit: int) -> UserRankingResponse:
-        # 전체 유저 수 조회 (순위에 포함될 대상)
-        total_query = select(func.count(User.user_id))
-        total_res = await self.db.execute(total_query)
-        total_count = total_res.scalar()
+    async def get_top_users_with_total(self, limit: int) -> UserTopRankingResponse:
+        """Redis에 캐싱된 글로벌 랭킹 정보를 반환 (limit에 따른 슬라이싱)"""
+        # Redis에서 데이터 로드
+        ranking_data = await self.user_repo.get_global_ranking_data()
 
-        # 랭킹 데이터 조회 (포인트 내림차순, 동점 시 ID 오름차순으로 고정)
-        ranking_query = (
-            select(User)
-            .order_by(User.points.desc(), User.user_id.asc())
-            .limit(limit)
+        return UserTopRankingResponse(
+            total_count=ranking_data["total_count"],
+            updated_at=ranking_data["updated_at"],
+            rankings=ranking_data["top_list"][:limit]
         )
-        ranking_res = await self.db.execute(ranking_query)
-        users = ranking_res.scalars().all()
-
-        # 순위 부여
-        rankings = [
-            {"rank": i + 1, "nickname": u.nickname, "points": u.points}
-            for i, u in enumerate(users)
-        ]
-
-        return UserRankingResponse(total_count=total_count, rankings=rankings)

@@ -133,8 +133,9 @@ class UserRankItem(BaseModel):
     nickname: str
     points: int
 
-class UserRankingResponse(BaseModel):
+class UserTopRankingResponse(BaseModel):
     total_count: int  # 전체 순위권 대상 유저 수
+    updated_at: datetime
     rankings: List[UserRankItem]
       
 # 닉네임 변경용 스키마
