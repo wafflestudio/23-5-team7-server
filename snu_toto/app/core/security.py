@@ -1,3 +1,4 @@
+import hashlib
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt
@@ -50,3 +51,29 @@ def create_refresh_token(user_id: int):
         expires_delta=timedelta(minutes=AUTH_SETTINGS.LONG_SESSION_LIFESPAN),
         secret=AUTH_SETTINGS.REFRESH_TOKEN_SECRET
     )
+
+def decode_jwt_token(token: str, secret: str) -> dict:
+    """JWT 토큰을 해독하고 페이로드를 반환 (만료 시 JWTError 발생)"""
+    try:
+        return jwt.decode(token, secret, algorithms=["HS256"])
+    except jwt.JWTError:
+        raise
+
+def get_token_remaining_seconds(token: str, secret: str) -> int:
+    """토큰의 남은 유효 시간을 초 단위로 반환"""
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        exp = payload.get("exp")
+        if not exp:
+            return 0
+
+        remaining = datetime.fromtimestamp(exp) - datetime.now()
+        seconds = int(remaining.total_seconds())
+        return max(seconds, 0)
+    except jwt.JWTError:
+        return 0
+
+def get_email_hash(email: str) -> str:
+    """이메일을 조회 가능한 형태로 해싱 (재가입 방지용)"""
+    clean_email = email.strip()
+    return hashlib.sha256(clean_email.encode()).hexdigest()

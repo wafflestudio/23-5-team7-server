@@ -123,11 +123,20 @@ class User(Base):
         nullable=True
     )
 
+    # 탈퇴여부
+    is_deleted: Mapped[bool] = mapped_column(
+        Boolean, 
+        default=False,
+        server_default="0",
+        nullable=False
+    )
+
 
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="user")
     created_events: Mapped[list["Event"]] = relationship("Event", back_populates="creator")
     # likes relationship은 순환 참조를 방지하기 위해 제거됨. 필요시 직접 쿼리 사용
+    withdrawal_info: Mapped["UserWithdrawal"] = relationship("UserWithdrawal", back_populates="user", uselist=False)
 
     __table_args__ = (
         CheckConstraint("points >= 0", name="check_points_positive"),
@@ -189,3 +198,37 @@ class PointHistory(Base):
     ) 
 
     user: Mapped["User"] = relationship("User", back_populates="point_histories")
+
+class UserWithdrawal(Base):
+    """회원 탈퇴 이력 및 재가입 제한 관리를 위한 테이블"""
+    __tablename__ = "user_withdrawal"
+
+    # ID
+    withdrawal_id : Mapped[str] = mapped_column(
+        String(36), 
+        primary_key=True, 
+        default=lambda: str(uuid.uuid4())
+    )
+
+    # 유저 ID
+    user_id: Mapped[str] = mapped_column(
+        String(36), 
+        ForeignKey("users.user_id"), 
+        nullable=False
+    )
+
+    # 이메일
+    hashed_email: Mapped[str] = mapped_column(
+        String(255), 
+        nullable=False, 
+        index=True
+    )
+
+    # 4. 탈퇴 시각: 현재 시각 저장
+    deleted_at: Mapped[DateTime] = mapped_column(
+        DateTime, 
+        server_default=func.now(), 
+        nullable=False
+    )
+
+    user = relationship("User", back_populates="withdrawal_info")

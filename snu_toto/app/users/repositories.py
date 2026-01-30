@@ -2,8 +2,8 @@ from typing import Annotated, Optional, List
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func, update
-from snu_toto.app.users.models import User, PointHistory, PointReason
+from sqlalchemy import desc, func, update
+from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
@@ -251,6 +251,25 @@ class UserRepository:
         finally:
             await redis.close()
     
+    async def get_global_ranking_data(self) -> dict:
+        """Redis에서 전체 유저 수와 상위 랭킹 리스트를 가져옴"""
+        from redis.asyncio import from_url
+        from snu_toto.app.core.config import REDIS_SETTINGS
+        import json
+
+        redis = await from_url(REDIS_SETTINGS.URL, decode_responses=True)
+        try:
+            keys = ["ranking:total_count", "ranking:top_list", "ranking:updated_at"]
+            values = await redis.mget(keys)
+            
+            return {
+                "total_count": int(values[0]) if values[0] else 0,
+                "top_list": json.loads(values[1]) if values[1] else [],
+                "updated_at": values[2] if values[2] else datetime.now().isoformat()
+            }
+        finally:
+            await redis.close()
+
     async def update_user(self, user: User) -> User:
         """사용자 정보 업데이트"""
         await self.db.flush()
@@ -285,3 +304,34 @@ class UserRepository:
         user.suspended_until = None
         user.suspension_reason = None
         await self.db.flush()
+
+    async def anonymize_and_withdraw(self, user: User, hashed_email: str):
+        """유저 정보를 비식별화하고 탈퇴 이력을 한 트랜잭션으로 기록"""
+        # 유저 정보 비식별화 (Unique 제약 충돌 방지를 위해 UUID 활용)
+        unique_id = str(user.user_id)[:12]
+        user.email = f"deleted_{unique_id}_{datetime.now().timestamp()}@snu.ac.kr"
+        user.nickname = f"탈퇴유저_{unique_id}"
+        user.hashed_password = None
+        user.social_id = None
+        user.is_deleted = True
+        user.points = 0
+
+        # 탈퇴 이력 추가
+        withdrawal = UserWithdrawal(
+            user_id=user.user_id,
+            hashed_email=hashed_email
+        )
+        self.db.add(withdrawal)
+        
+        await self.db.commit()
+    
+    async def get_latest_withdrawal_by_hash(self, hashed_email: str) -> UserWithdrawal | None:
+        """이메일 해시로 가장 최근 탈퇴 이력 조회"""
+        query = (
+            select(UserWithdrawal)
+            .where(UserWithdrawal.hashed_email == hashed_email)
+            .order_by(desc(UserWithdrawal.deleted_at))
+            .limit(1)
+        )
+        result = await self.db.execute(query)
+        return result.scalar_one_or_none()

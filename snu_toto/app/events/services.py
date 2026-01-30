@@ -375,15 +375,26 @@ class EventServices:
         }
         if new_status not in allowed_map.get(current_status, []):
             raise InvalidStatusTransitionError()
+        
+        # 상태에 따른 시간 업데이트 값 설정
+        update_data = {"status": new_status}
+        
+        # OPEN으로 변경 시: 시작 시각을 현재로
+        if new_status == EventStatus.OPEN:
+            update_data["start_at"] = datetime.now()
+        
+        # CLOSED로 변경 시: 종료 시각을 현재로
+        elif new_status == EventStatus.CLOSED:
+            update_data["end_at"] = datetime.now()
 
         session = self.event_repositories.session
 
         if not session.in_transaction():
             async with session.begin():
-                await self.event_repositories.update_event_status(event_id, new_status)
+                await self.event_repositories.update_event_fields(event_id, update_data)
         else:
-            await self.event_repositories.update_event_status(event_id, new_status)
-            await session.flush() # 변경 사항을 현재 트랜잭션에 반영 (커밋은 호출자가 관리)
+            await self.event_repositories.update_event_fields(event_id, update_data)
+            await session.flush()
     
     async def settle_event(self, event_id: str, winner_option_ids: List[str]) -> Event:
         """이벤트 결과 확정 및 포인트 정산 실행"""

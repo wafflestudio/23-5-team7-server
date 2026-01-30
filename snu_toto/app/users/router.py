@@ -10,6 +10,7 @@ from snu_toto.app.users.schemas import (
     UserProfileResponse,
     UserStatsResponse,
     UserRankingResponse,
+    UserTopRankingResponse,
     UpdateNicknameRequest,
     UpdateNicknameResponse,
     UpdatePasswordRequest,
@@ -112,7 +113,7 @@ async def update_my_password(
 async def get_user_ranking(
     limit: Annotated[int, Query(ge=1, le=1000)] = 100,
     user_service: UserService = Depends(get_user_service)
-)->UserRankingResponse:
+)->UserTopRankingResponse:
     """포인트 상위 유저 랭킹 조회"""
     return await user_service.get_top_users_with_total(limit)
 
