@@ -64,11 +64,17 @@ async def update_event_status(
 async def get_events(
     event_service: Annotated[EventServices, Depends()],
     status: EventStatus | None = Query(None),
+    liked: bool | None = Query(None, description="좋아요한 이벤트만 필터링"),
     cursor: str | None = Query(None),
     limit: int = Query(10, ge=1, le=100),
     current_user: User | None = Depends(get_optional_current_user)
 ) -> EventListResponse:
     """이벤트 목록 조회 API (커서 기반 페이지네이션)"""
+    
+    # liked=true인 경우 인증 필수
+    if liked is True and current_user is None:
+        from snu_toto.app.auth.exceptions import UnauthorizedException
+        raise UnauthorizedException()
     
     # limit 범위 검증
     if limit < 1 or limit > 100:
@@ -77,6 +83,7 @@ async def get_events(
     user_id = current_user.user_id if current_user else None
     return await event_service.get_events_paginated(
         status=status,
+        liked=liked,
         cursor=cursor,
         limit=limit,
         user_id=user_id

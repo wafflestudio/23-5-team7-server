@@ -47,12 +47,19 @@ class EventRepositories:
     async def get_events_with_cursor(
         self,
         status: EventStatus | None = None,
+        liked: bool | None = None,
+        user_id: str | None = None,
         cursor_end_at: datetime | None = None,
         cursor_event_id: str | None = None,
         limit: int = 10
     ) -> Tuple[List[Event], bool]:
         """커서 기반 페이지네이션으로 이벤트 목록 조회 (마감 임박순)"""
         query = select(Event)
+        
+        # liked=true 필터링: event_likes 테이블과 JOIN
+        if liked is True and user_id:
+            from snu_toto.app.likes.models import EventLike
+            query = query.join(EventLike, (EventLike.event_id == Event.event_id) & (EventLike.user_id == user_id))
         
         # 상태 필터링
         if status:

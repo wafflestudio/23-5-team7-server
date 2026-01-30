@@ -7,7 +7,7 @@ from snu_toto.app.events.exceptions import EventNotFoundError
 
 
 class LikeService:
-    """좋아요 관련 로직"""
+    """좋아요 관련 로직""" 
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session

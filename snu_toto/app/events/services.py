@@ -310,6 +310,7 @@ class EventServices:
     async def get_events_paginated(
         self,
         status: EventStatus | None = None,
+        liked: bool | None = None,
         cursor: str | None = None,
         limit: int = 10,
         user_id: str | None = None
@@ -327,9 +328,11 @@ class EventServices:
             if not event:
                 raise InvalidCursorError()
         
-        # 이벤트 목록 조회
+        # 이벤트 목록 조회 (liked 필터는 repository에서 처리)
         events, has_more = await self.event_repositories.get_events_with_cursor(
             status=status,
+            liked=liked,
+            user_id=user_id,
             cursor_end_at=cursor_end_at,
             cursor_event_id=cursor_event_id,
             limit=limit
