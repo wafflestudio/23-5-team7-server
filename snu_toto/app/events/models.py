@@ -74,15 +74,25 @@ class Event(Base):
         nullable=False
     )
 
+    # 좋아요 수
+    like_count: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        server_default="0",
+        nullable=False
+    )
+
     options: Mapped[list["EventOption"]] = relationship("EventOption", back_populates="event")
     images: Mapped[list["EventImage"]] = relationship("EventImage", back_populates="event")
     creator: Mapped["User"] = relationship("User", back_populates="created_events")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="event")
+    # likes relationship은 순환 참조를 방지하기 위해 제거됨. 필요시 직접 쿼리 사용
 
     __table_args__ = (
         CheckConstraint("CHAR_LENGTH(title) >= 5", name="check_event_title_length"),
         CheckConstraint("start_at >= created_at", name="check_event_start_after_created"), # start_at가 NULL이어도 통과
         CheckConstraint("end_at > start_at", name="check_event_end_after_start"),
+        CheckConstraint("like_count >= 0", name="check_like_count_positive"),
     )
 
 class EventOption(Base):
