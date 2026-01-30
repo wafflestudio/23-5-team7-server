@@ -235,8 +235,8 @@ class EventServices:
             option_image_url=option.option_image_url
         )
 
-    async def get_event_details(self, event_id: str) -> EventDetailResponse:
-        """이벤트 상세 정보 조회 (옵션, 이미지, 배당률 포함)"""
+    async def get_event_details(self, event_id: str, user_id: str | None = None) -> EventDetailResponse:
+        """이벤트 상세 정보 조회 (옵션, 이미지, 배당률, 좋아요 포함)"""
         event = await self.event_repositories.get_event_by_id(event_id)
         if event is None:
             raise EventNotFoundError()
@@ -264,6 +264,16 @@ class EventServices:
             for image in images
         ]
 
+        # 좋아요 정보 계산
+        like_count = event.like_count
+        is_liked = None
+        if user_id:
+            # 로그인 사용자인 경우 좋아요 여부 확인
+            from snu_toto.app.likes.repositories import LikeRepository
+            like_repo = LikeRepository(self.event_repositories.session)
+            existing_like = await like_repo.get_like_by_event_and_user(event_id, user_id)
+            is_liked = existing_like is not None
+
         return EventDetailResponse(
             event_id=event.event_id,
             title=event.title,
@@ -271,6 +281,8 @@ class EventServices:
             status=event.status,
             total_participants=total_participants,
             end_at=event.end_at,
+            like_count=like_count,
+            is_liked=is_liked,
             options=option_responses,
             images=image_responses
         )

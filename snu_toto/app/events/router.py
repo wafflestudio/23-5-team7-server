@@ -9,7 +9,7 @@ from snu_toto.app.events.utils import parse_event_data
 from snu_toto.app.users.models import User
 from snu_toto.app.events.services import EventServices
 from snu_toto.app.events.schemas import EventCreateRequest, EventCreateResponse, EventDetailResponse, EventListResponse, EventSettleRequest, EventSettleResponse, EventStatusUpdateRequest, WinnerOptionDetail
-from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user
+from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user, get_optional_current_user
 from snu_toto.app.events.websocket import manager
 
 event_router = APIRouter()
@@ -82,10 +82,12 @@ async def get_events(
 @event_router.get("/{event_id}", status_code=200)
 async def get_event_details(
     event_id: str,
-    event_service: Annotated[EventServices, Depends()]
+    event_service: Annotated[EventServices, Depends()],
+    current_user: User | None = Depends(get_optional_current_user)
 ) -> EventDetailResponse:
     """이벤트 상세 조회 API"""
-    event_details = await event_service.get_event_details(event_id)
+    user_id = current_user.user_id if current_user else None
+    event_details = await event_service.get_event_details(event_id, user_id)
     return event_details
 
 @event_router.post("/{event_id}/settle", status_code=200)

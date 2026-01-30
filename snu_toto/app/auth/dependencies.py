@@ -128,3 +128,48 @@ async def get_current_admin_user(
     if current_user.role != UserRole.ADMIN:
         raise NotAdminError()
     return current_user
+
+
+async def get_optional_current_user(
+    token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db_session),
+    auth_service: AuthService = Depends(get_auth_service)
+) -> User | None:
+    """선택적 인증: 토큰이 있으면 유저 반환, 없으면 None 반환"""
+    
+    if token_obj is None:
+        return None
+    
+    if token_obj.scheme.lower() != "bearer":
+        return None
+
+    token = token_obj.credentials
+
+    try:
+        payload = jwt.decode(
+            token, 
+            AUTH_SETTINGS.ACCESS_TOKEN_SECRET, 
+            algorithms=["HS256"]
+        )
+        user_id: str = payload.get("sub")
+        purpose: str = payload.get("purpose")
+
+        if purpose != "access" or user_id is None:
+            return None
+
+    except JWTError:
+        return None
+
+    # DB에서 유저 조회
+    user_repo = UserRepository(db)
+    user = await user_repo.get_by_id(user_id)
+    
+    if not user:
+        return None
+    
+    try:
+        await auth_service._check_user_suspension(user)
+    except:
+        return None
+
+    return user
