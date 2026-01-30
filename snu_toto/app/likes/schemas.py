@@ -11,3 +11,9 @@ class LikeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class LikeDeleteResponse(BaseModel):
+    """좋아요 취소 응답 스키마"""
+    message: str = Field(..., description="응답 메시지")
+    event_id: str = Field(..., description="이벤트 ID")
