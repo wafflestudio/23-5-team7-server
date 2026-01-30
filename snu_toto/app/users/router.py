@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status, Query
 from typing import Optional, Annotated
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from snu_toto.app.users.schemas import (
     UserSignupRequest, 
@@ -20,6 +21,7 @@ from snu_toto.app.users.dependencies import get_user_service
 from snu_toto.app.users.models import User, PointReason
 from snu_toto.app.auth.dependencies import get_current_user
 from snu_toto.app.bets.models import BetStatus
+from snu_toto.app.core.database import get_db_session
 
 
 users_router = APIRouter()

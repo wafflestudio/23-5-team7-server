@@ -135,6 +135,7 @@ class User(Base):
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="user")
     created_events: Mapped[list["Event"]] = relationship("Event", back_populates="creator")
+    # likes relationship은 순환 참조를 방지하기 위해 제거됨. 필요시 직접 쿼리 사용
     withdrawal_info: Mapped["UserWithdrawal"] = relationship("UserWithdrawal", back_populates="user", uselist=False)
 
     __table_args__ = (

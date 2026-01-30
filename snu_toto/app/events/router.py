@@ -9,7 +9,7 @@ from snu_toto.app.events.utils import parse_event_data
 from snu_toto.app.users.models import User
 from snu_toto.app.events.services import EventServices
 from snu_toto.app.events.schemas import EventCreateRequest, EventCreateResponse, EventDetailResponse, EventListResponse, EventSettleRequest, EventSettleResponse, EventStatusUpdateRequest, WinnerOptionDetail
-from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user
+from snu_toto.app.auth.dependencies import get_current_admin_user, get_current_user, get_optional_current_user
 from snu_toto.app.events.websocket import manager
 
 event_router = APIRouter()
@@ -64,28 +64,40 @@ async def update_event_status(
 async def get_events(
     event_service: Annotated[EventServices, Depends()],
     status: EventStatus | None = Query(None),
+    liked: bool | None = Query(None, description="좋아요한 이벤트만 필터링"),
     cursor: str | None = Query(None),
-    limit: int = Query(10, ge=1, le=100)
+    limit: int = Query(10, ge=1, le=100),
+    current_user: User | None = Depends(get_optional_current_user)
 ) -> EventListResponse:
     """이벤트 목록 조회 API (커서 기반 페이지네이션)"""
+    
+    # liked=true인 경우 인증 필수
+    if liked is True and current_user is None:
+        from snu_toto.app.auth.exceptions import UnauthorizedException
+        raise UnauthorizedException()
     
     # limit 범위 검증
     if limit < 1 or limit > 100:
         raise OutOfRangeError()
     
+    user_id = current_user.user_id if current_user else None
     return await event_service.get_events_paginated(
         status=status,
+        liked=liked,
         cursor=cursor,
-        limit=limit
+        limit=limit,
+        user_id=user_id
     )
 
 @event_router.get("/{event_id}", status_code=200)
 async def get_event_details(
     event_id: str,
-    event_service: Annotated[EventServices, Depends()]
+    event_service: Annotated[EventServices, Depends()],
+    current_user: User | None = Depends(get_optional_current_user)
 ) -> EventDetailResponse:
     """이벤트 상세 조회 API"""
-    event_details = await event_service.get_event_details(event_id)
+    user_id = current_user.user_id if current_user else None
+    event_details = await event_service.get_event_details(event_id, user_id)
     return event_details
 
 @event_router.post("/{event_id}/settle", status_code=200)
