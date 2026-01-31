@@ -32,4 +32,5 @@ dependencies = [
     "greenlet>=3.0.0",
     "jmespath>=1.0.1",
     "apscheduler>=3.11.2",
+    "pytz>=2025.2",
 ]

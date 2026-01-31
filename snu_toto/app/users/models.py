@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING, Optional
 
+from snu_toto.app.core.date_utils import get_kst_now
+
 if TYPE_CHECKING:
     from snu_toto.app.bets.models import Bet
     from snu_toto.app.events.models import Event
@@ -70,7 +72,7 @@ class User(Base):
     # 계정 생성 시각
     created_at: Mapped[DateTime] = mapped_column(
         DateTime, 
-        server_default=func.now(), 
+        default=get_kst_now, 
         nullable=False
     )
     
@@ -185,7 +187,7 @@ class PointHistory(Base):
     # 변화 시각
     created_at: Mapped[DateTime] = mapped_column(
         DateTime, 
-        server_default=func.now(), 
+        default=get_kst_now,
         nullable=False
     )
 
@@ -227,7 +229,7 @@ class UserWithdrawal(Base):
     # 4. 탈퇴 시각: 현재 시각 저장
     deleted_at: Mapped[DateTime] = mapped_column(
         DateTime, 
-        server_default=func.now(), 
+        default=get_kst_now,
         nullable=False
     )
 
