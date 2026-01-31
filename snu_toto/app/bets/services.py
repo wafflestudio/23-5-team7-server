@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 from fastapi import Depends
 from snu_toto.app.bets.repositories import BetRepositories
 from snu_toto.app.bets.exceptions import (
@@ -12,10 +12,16 @@ from snu_toto.app.bets.exceptions import (
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.bets.schemas import BetCreateRequest, BetCreateResponse
 from snu_toto.app.events.models import EventStatus
+from snu_toto.app.events.services import EventServices
 
 class BetServices:
-    def __init__(self, bet_repositories: Annotated[BetRepositories, Depends()]) -> None:
+    def __init__(
+        self, 
+        bet_repositories: Annotated[BetRepositories, Depends()],
+        event_service: Annotated["EventServices", Depends()] = None
+    ) -> None:
         self.bet_repositories = bet_repositories
+        self.event_service = event_service
     
     async def create_bet(
         self,
@@ -91,7 +97,7 @@ class BetServices:
                 
                 await session.flush()
             
-            return BetCreateResponse(
+            response = BetCreateResponse(
                 bet_id=bet.bet_id,
                 user_id=bet.user_id,
                 event_id=bet.event_id,
@@ -101,6 +107,12 @@ class BetServices:
                 created_at=bet.created_at,
                 status=bet.status
             )
+            
+            # 베팅 완료 후 실시간 배당률 브로드캐스트
+            if self.event_service:
+                await self.event_service.update_odds_and_broadcast(event_id)
+            
+            return response
         except Exception as e:
             # 커스텀 예외는 그대로 전달
             if isinstance(e, (EventNotFoundError, InsufficientBalanceError, OptionNotFoundError, 
