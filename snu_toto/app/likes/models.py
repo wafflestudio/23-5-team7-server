@@ -2,6 +2,7 @@ import uuid
 from sqlalchemy import String, DateTime, ForeignKey, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 from snu_toto.app.core.database import Base
+from snu_toto.app.core.date_utils import get_kst_now
 
 
 class EventLike(Base):
@@ -32,7 +33,7 @@ class EventLike(Base):
     # 좋아요 생성 시각
     created_at: Mapped[DateTime] = mapped_column(
         DateTime,
-        server_default=func.now(),
+        default=get_kst_now,
         nullable=False
     )
 
