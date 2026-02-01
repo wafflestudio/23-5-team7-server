@@ -23,6 +23,7 @@ class SocialType(enum.Enum):
 
 class PointReason(str, enum.Enum):
     """포인트 기록 변경 사유를 위한 Enum"""
+    SIGNUP = "SIGNUP"
     BET = "BET"
     WIN = "WIN"
     LOSE = "LOSE"
