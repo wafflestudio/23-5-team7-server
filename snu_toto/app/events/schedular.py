@@ -3,6 +3,7 @@ import time
 from redis.asyncio import from_url # Redis 연결용
 from snu_toto.app.core.config import REDIS_SETTINGS # Redis 설정 임포트
 from snu_toto.app.core.database import AsyncSessionLocal
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.events.models import EventStatus
 from snu_toto.app.events.services import EventServices
 from snu_toto.app.events.repositories import EventRepositories
@@ -23,7 +24,7 @@ async def auto_update_event_status():
             async with AsyncSessionLocal() as session:
                 service = get_event_service_manual(session, redis)
                 
-                now = int(time.time())
+                now = int(get_kst_now().timestamp())
                 
                 # 1. OPEN 대상 처리 (READY -> OPEN)
                 open_targets = await redis.zrangebyscore("event:sched:open", "-inf", now)

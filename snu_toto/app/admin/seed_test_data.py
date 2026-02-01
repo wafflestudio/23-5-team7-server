@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
 from snu_toto.app.core.config import DB_SETTINGS
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.events.models import Event, EventOption, EventImage, EventStatus
 from snu_toto.app.users.models import User, UserRole, SocialType, PointHistory, PointReason
 from snu_toto.app.bets.models import Bet, BetStatus
@@ -125,7 +126,7 @@ async def create_test_users(session: AsyncSession) -> list[str]:
 async def create_test_events(session: AsyncSession, creator_id: str) -> list[Event]:
     """다양한 테스트 이벤트 생성"""
     
-    now = datetime.now()
+    now = get_kst_now()
     
     events_data = [
         # 스포츠 - e스포츠
@@ -534,7 +535,7 @@ async def create_test_bets(session: AsyncSession, user_ids: list[str], events: l
             option_id=option.option_id,
             amount=amount,
             status=BetStatus.PENDING,
-            created_at=datetime.now()
+            created_at=get_kst_now()
         )
         session.add(bet)
         

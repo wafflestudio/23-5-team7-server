@@ -5,6 +5,7 @@ from math import ceil
 
 from snu_toto.app.admin.exceptions import AlreadySuspendedError, SelfRoleChangeDeniedError, SelfSuspensionDeniedError
 from snu_toto.app.bets.exceptions import EventNotFoundError
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.bets.repositories import BetRepositories
 from snu_toto.app.bets.schemas import (
@@ -118,7 +119,7 @@ class AdminServices:
             raise SelfSuspensionDeniedError()
 
         # 중복 정지 체크
-        now = datetime.now()
+        now = get_kst_now()
         if user.suspended_until and user.suspended_until > now:
             raise AlreadySuspendedError()
 
