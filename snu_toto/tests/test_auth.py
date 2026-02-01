@@ -57,6 +57,8 @@ def mock_verification_service():
     mock.check_rate_limit.return_value = True
     mock.create_verification_code.return_value = "123456"
     mock.verify_code.return_value = True
+    mock.is_token_blacklisted.return_value = False  # 토큰이 블랙리스트에 없다고 가정
+    mock.blacklist_token.return_value = None  # 블랙리스트 등록 성공
     return mock
 
 @pytest.fixture(autouse=True)
@@ -361,3 +363,188 @@ async def test_confirm_verification_wrong_code(async_client: AsyncClient, user_s
     assert response.status_code == 400
     error = response.json()
     assert error["error_code"] == "ERR_012"
+
+
+# =============================================================================
+# 1-7. 토큰 리프레시 (POST /api/auth/refresh)
+# =============================================================================
+from snu_toto.tests.conftest import auth_header, assert_error_response
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_success_A19(async_client: AsyncClient, user_signup_data, db_session):
+    """(A19) 토큰 리프레시 성공"""
+    # 1. 회원가입
+    await async_client.post("/api/users", json=user_signup_data)
+    
+    # 2. 인증 완료
+    from snu_toto.app.users.models import User
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == user_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    await db_session.commit()
+    
+    # 3. 로그인
+    login_res = await async_client.post("/api/auth/login", json={
+        "email": user_signup_data["email"],
+        "password": user_signup_data["password"]
+    })
+    
+    assert login_res.status_code == 200
+    refresh_token = login_res.json().get("refresh_token")
+    
+    # 4. 토큰 리프레시 요청 (쿠키로 전달)
+    response = await async_client.post(
+        "/api/auth/refresh",
+        headers={"Cookie": f"refresh_token={refresh_token}"}
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+# end def
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_missing_A20(async_client: AsyncClient):
+    """(A20) 리프레시 토큰 없음"""
+    response = await async_client.post("/api/auth/refresh")
+    
+    assert_error_response(response, 401, "ERR_004")
+# end def
+
+
+# =============================================================================
+# 1-8. 로그아웃 (POST /api/auth/logout)
+# =============================================================================
+@pytest.mark.asyncio
+async def test_logout_success_A22(async_client: AsyncClient, user_signup_data, db_session):
+    """(A22) 로그아웃 성공"""
+    # 1. 회원가입
+    await async_client.post("/api/users", json=user_signup_data)
+    
+    # 2. 인증 완료
+    from snu_toto.app.users.models import User
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == user_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    await db_session.commit()
+    
+    # 3. 로그인
+    login_res = await async_client.post("/api/auth/login", json={
+        "email": user_signup_data["email"],
+        "password": user_signup_data["password"]
+    })
+    
+    access_token = login_res.json().get("access_token")
+    refresh_token = login_res.json().get("refresh_token")
+    
+    # 4. 로그아웃
+    response = await async_client.post(
+        "/api/auth/logout",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Cookie": f"refresh_token={refresh_token}"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+# end def
+
+
+# =============================================================================
+# 1-9. 회원 탈퇴 (POST /api/auth/withdraw)
+# =============================================================================
+@pytest.mark.asyncio
+async def test_withdraw_success_A23(async_client: AsyncClient, user_signup_data, db_session):
+    """(A23) 회원 탈퇴 성공"""
+    # 1. 회원가입
+    await async_client.post("/api/users", json=user_signup_data)
+    
+    # 2. 인증 완료
+    from snu_toto.app.users.models import User
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == user_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    await db_session.commit()
+    
+    # 3. 로그인
+    login_res = await async_client.post("/api/auth/login", json={
+        "email": user_signup_data["email"],
+        "password": user_signup_data["password"]
+    })
+    
+    access_token = login_res.json().get("access_token")
+    refresh_token = login_res.json().get("refresh_token")
+    
+    # 4. 회원 탈퇴
+    response = await async_client.post(
+        "/api/auth/withdraw",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Cookie": f"refresh_token={refresh_token}"
+        }
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+# end def
+
+
+@pytest.mark.asyncio
+async def test_withdraw_then_re_register_blocked_A24(async_client: AsyncClient, user_signup_data, db_session):
+    """(A24) 탈퇴 후 30일 내 재가입 차단 (ERR_051)"""
+    # 1. 회원가입
+    await async_client.post("/api/users", json=user_signup_data)
+    
+    # 2. 인증 완료
+    from snu_toto.app.users.models import User
+    from sqlalchemy import select
+    
+    stmt = select(User).where(User.email == user_signup_data["email"])
+    result = await db_session.execute(stmt)
+    user = result.scalar_one()
+    user.is_snu_verified = True
+    await db_session.commit()
+    
+    # 3. 로그인
+    login_res = await async_client.post("/api/auth/login", json={
+        "email": user_signup_data["email"],
+        "password": user_signup_data["password"]
+    })
+    
+    access_token = login_res.json().get("access_token")
+    refresh_token = login_res.json().get("refresh_token")
+    
+    # 4. 회원 탈퇴
+    withdraw_res = await async_client.post(
+        "/api/auth/withdraw",
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Cookie": f"refresh_token={refresh_token}"
+        }
+    )
+    assert withdraw_res.status_code == 200, f"Withdraw failed: {withdraw_res.json()}"
+    
+    # 5. 같은 이메일로 재가입 시도 → ERR_051
+    new_signup_data = {
+        "email": user_signup_data["email"],
+        "password": "newpassword123",
+        "nickname": "새닉네임",
+    }
+    response = await async_client.post("/api/users", json=new_signup_data)
+    
+    assert_error_response(response, 409, "ERR_051")
+# end def
