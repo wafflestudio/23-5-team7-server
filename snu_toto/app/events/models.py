@@ -84,7 +84,7 @@ class Event(Base):
     )
 
     # 오픈가능여부
-    is_eigible: Mapped[bool] = mapped_column(
+    is_eligible: Mapped[bool] = mapped_column(
         Boolean, 
         default=False,
         server_default="0",
