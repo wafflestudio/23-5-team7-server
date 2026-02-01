@@ -27,3 +27,10 @@ class CommentResponse(BaseModel):
     content: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+
+
+class CommentListResponse(BaseModel):
+    """댓글 목록 응답"""
+    comments: list[CommentResponse]
+    next_cursor: Optional[str] = None
+    has_more: bool

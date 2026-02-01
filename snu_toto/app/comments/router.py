@@ -1,11 +1,11 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import ValidationError
 from snu_toto.app.comments.services import CommentService
-from snu_toto.app.comments.schemas import CommentCreateRequest, CommentResponse
+from snu_toto.app.comments.schemas import CommentCreateRequest, CommentResponse, CommentListResponse
 from snu_toto.app.auth.dependencies import get_current_user
 from snu_toto.app.users.models import User
-from snu_toto.app.common.exceptions import SnutotoException
+from snu_toto.app.common.exceptions import SnutotoException, InvalidFormatException
 
 
 comment_router = APIRouter()
@@ -33,3 +33,22 @@ async def create_comment(
             if isinstance(original_error, SnutotoException):
                 raise original_error
         raise
+
+
+@comment_router.get("/events/{event_id}/comments", status_code=200)
+async def get_comments(
+    event_id: str,
+    service: Annotated[CommentService, Depends()],
+    cursor: str | None = Query(None, description="다음 페이지를 위한 커서"),
+    limit: int = Query(20, ge=1, le=100, description="한 번에 가져올 댓글 수")
+) -> CommentListResponse:
+    """댓글 목록 조회 (커서 기반 페이지네이션)"""
+    # limit 범위 검증 (Query에서 자동 처리되지만 명시적 에러를 위해)
+    if limit < 1 or limit > 100:
+        raise InvalidFormatException()
+    
+    return await service.get_comments_by_event(
+        event_id=event_id,
+        cursor=cursor,
+        limit=limit
+    )

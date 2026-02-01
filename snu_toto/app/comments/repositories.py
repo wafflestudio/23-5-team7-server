@@ -1,6 +1,7 @@
 from typing import Annotated
+from datetime import datetime
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from snu_toto.app.core.database import get_db_session
@@ -26,3 +27,37 @@ class CommentRepository:
             .options(selectinload(Comment.user))
         )
         return result.scalar_one_or_none()
+
+    async def get_comments_by_event_with_cursor(
+        self,
+        event_id: str,
+        cursor_created_at: datetime | None = None,
+        cursor_comment_id: str | None = None,
+        limit: int = 20
+    ) -> list[Comment]:
+        """커서 기반 댓글 목록 조회 (최신순)"""
+        query = (
+            select(Comment)
+            .where(Comment.event_id == event_id)
+            .options(selectinload(Comment.user))
+        )
+
+        # 커서 적용 (created_at DESC, comment_id DESC)
+        if cursor_created_at and cursor_comment_id:
+            query = query.where(
+                or_(
+                    Comment.created_at < cursor_created_at,
+                    and_(
+                        Comment.created_at == cursor_created_at,
+                        Comment.comment_id < cursor_comment_id
+                    )
+                )
+            )
+
+        query = query.order_by(
+            Comment.created_at.desc(),
+            Comment.comment_id.desc()
+        ).limit(limit + 1)  # has_more 판단을 위해 limit + 1 조회
+
+        result = await self.session.execute(query)
+        return list(result.scalars().all())
