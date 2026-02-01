@@ -14,12 +14,12 @@ sys.path.append(os.path.join(os.getcwd(), "snu_toto"))
 
 # Alembic을 통해 인식돼야 하는 모델
 from snu_toto.app.core.database import Base # 모든 models.py가 동일한 절대 경로를 사용해야 Base를 같은 것으로 인식
-from app.core.config import DB_SETTINGS
-from app.likes.models import EventLike
-from app.users.models import User, PointHistory
-from app.events.models import Event, EventOption, EventImage
-from app.bets.models import Bet
-from app.comments.models import Comment
+from snu_toto.app.core.config import DB_SETTINGS
+from snu_toto.app.likes.models import EventLike
+from snu_toto.app.users.models import User, PointHistory
+from snu_toto.app.events.models import Event, EventOption, EventImage
+from snu_toto.app.bets.models import Bet
+from snu_toto.app.comments.models import Comment
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
