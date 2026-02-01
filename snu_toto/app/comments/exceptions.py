@@ -23,3 +23,15 @@ class InvalidCursorError(SnutotoException):
     """유효하지 않은 커서"""
     def __init__(self) -> None:
         super().__init__(status_code=404, error_code="ERR_037", error_msg="INVALID_CURSOR")
+
+
+class CommentNotFoundForUpdateError(SnutotoException):
+    """댓글을 찾을 수 없음 (수정/삭제용)"""
+    def __init__(self) -> None:
+        super().__init__(status_code=404, error_code="ERR_049", error_msg="COMMENT NOT FOUND")
+
+
+class NotCommentOwnerError(SnutotoException):
+    """댓글 작성자가 아님"""
+    def __init__(self) -> None:
+        super().__init__(status_code=403, error_code="ERR_050", error_msg="NOT COMMENT OWNER")

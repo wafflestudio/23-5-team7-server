@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 from pydantic import ValidationError
 from snu_toto.app.comments.services import CommentService
-from snu_toto.app.comments.schemas import CommentCreateRequest, CommentResponse, CommentListResponse
+from snu_toto.app.comments.schemas import CommentCreateRequest, CommentUpdateRequest, CommentResponse, CommentListResponse
 from snu_toto.app.auth.dependencies import get_current_user
 from snu_toto.app.users.models import User
 from snu_toto.app.common.exceptions import SnutotoException, InvalidFormatException
@@ -52,3 +52,26 @@ async def get_comments(
         cursor=cursor,
         limit=limit
     )
+
+
+@comment_router.patch("/comments/{comment_id}", status_code=200)
+async def update_comment(
+    comment_id: str,
+    data: CommentUpdateRequest,
+    service: Annotated[CommentService, Depends()],
+    current_user: User = Depends(get_current_user)
+) -> CommentResponse:
+    """댓글 수정 (작성자만 가능)"""
+    try:
+        return await service.update_comment(
+            comment_id=comment_id,
+            user_id=current_user.user_id,
+            data=data
+        )
+    except ValidationError as e:
+        # Pydantic validation 에러 처리
+        for error in e.errors():
+            original_error = error.get("ctx", {}).get("error")
+            if isinstance(original_error, SnutotoException):
+                raise original_error
+        raise

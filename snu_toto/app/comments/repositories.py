@@ -61,3 +61,9 @@ class CommentRepository:
 
         result = await self.session.execute(query)
         return list(result.scalars().all())
+
+    async def update_comment(self, comment: Comment) -> Comment:
+        """댓글 수정"""
+        await self.session.flush()
+        await self.session.refresh(comment, attribute_names=["user"])
+        return comment

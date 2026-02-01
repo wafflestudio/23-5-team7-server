@@ -4,8 +4,8 @@ from datetime import datetime
 from fastapi import Depends
 from snu_toto.app.comments.models import Comment
 from snu_toto.app.comments.repositories import CommentRepository
-from snu_toto.app.comments.schemas import CommentCreateRequest, CommentResponse, CommentListResponse
-from snu_toto.app.comments.exceptions import InvalidCursorError
+from snu_toto.app.comments.schemas import CommentCreateRequest, CommentUpdateRequest, CommentResponse, CommentListResponse
+from snu_toto.app.comments.exceptions import InvalidCursorError, CommentNotFoundForUpdateError, NotCommentOwnerError
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.events.exceptions import EventNotFoundError
 from snu_toto.app.core.date_utils import get_kst_now
@@ -120,4 +120,36 @@ class CommentService:
             comments=comment_responses,
             next_cursor=next_cursor,
             has_more=has_more
+        )
+
+    async def update_comment(
+        self,
+        comment_id: str,
+        user_id: str,
+        data: CommentUpdateRequest
+    ) -> CommentResponse:
+        """댓글 수정"""
+        # 댓글 조회
+        comment = await self.comment_repository.get_comment_by_id(comment_id)
+        if not comment:
+            raise CommentNotFoundForUpdateError()
+
+        # 권한 확인 (작성자만 수정 가능, 관리자도 불가)
+        if comment.user_id != user_id:
+            raise NotCommentOwnerError()
+
+        # 댓글 수정
+        comment.content = data.content.strip()
+        comment.updated_at = get_kst_now()
+
+        updated_comment = await self.comment_repository.update_comment(comment)
+        
+        return CommentResponse(
+            comment_id=updated_comment.comment_id,
+            event_id=updated_comment.event_id,
+            user_id=updated_comment.user_id,
+            nickname=updated_comment.user.nickname,
+            content=updated_comment.content,
+            created_at=updated_comment.created_at,
+            updated_at=updated_comment.updated_at
         )
