@@ -43,9 +43,11 @@ class EventCreateRequest(BaseModel):
     @model_validator(mode='after')
     def validate_dates(self) -> 'EventCreateRequest':
         now = get_kst_now()
-        if self.start_at < now + timedelta(seconds=10):
+        # 생성일 기준 최소 2일 후 시작 가능
+        if self.start_at <= now + timedelta(days=2):
             raise InvalidDateError()
-        if self.end_at <= self.start_at:
+        # 시작일 기준 최소 1일 후 종료 가능
+        if self.end_at <= self.start_at + timedelta(days=1):
             raise InvalidDateError()
         return self
     

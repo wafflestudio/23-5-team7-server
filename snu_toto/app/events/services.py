@@ -366,3 +366,22 @@ class EventServices:
         }
         
         await manager.broadcast_to_event(event_id, odds_data)
+
+    async def process_daily_event_selection(self):
+        """매일 20:00 인기 이벤트 선정 로직"""
+        # 조건(최소 좋아요 3개 이상)에 맞는 상위 3개 이벤트 조회
+        top_events = await self.event_repositories.get_top_liked_ready_events(limit=3, min_likes=3)
+        
+        if not top_events:
+            print("[Batch] 선정된 이벤트가 없습니다.")
+            return []
+
+        event_ids = [e.event_id for e in top_events]
+        
+        # 선정된 이벤트들의 is_eligible을 True로 변경
+        await self.event_repositories.update_is_eligible(event_ids, True)
+        
+        await self.event_repositories.session.flush()
+        
+        print(f"[Batch] {len(event_ids)}개의 이벤트가 선정되었습니다: {event_ids}")
+        return event_ids
