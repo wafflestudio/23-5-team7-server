@@ -2,6 +2,7 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from datetime import datetime, timedelta
 
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.events.models import EventStatus
 from snu_toto.app.events.exceptions import DuplicateOptionNameError, InvalidDateError, InvalidOptionCountError, InvalidOptionNameError
 from snu_toto.app.events.models import EventStatus
@@ -41,7 +42,7 @@ class EventCreateRequest(BaseModel):
 
     @model_validator(mode='after')
     def validate_dates(self) -> 'EventCreateRequest':
-        now = datetime.now()
+        now = get_kst_now()
         if self.start_at < now + timedelta(seconds=10):
             raise InvalidDateError()
         if self.end_at <= self.start_at:

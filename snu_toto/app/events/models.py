@@ -92,7 +92,7 @@ class Event(Base):
 
     __table_args__ = (
         CheckConstraint("CHAR_LENGTH(title) >= 5", name="check_event_title_length"),
-        CheckConstraint("start_at >= created_at + INTERVAL 10 SECOND", name="check_event_start_after_created"), # start_at가 NULL이어도 통과
+        CheckConstraint("start_at >= created_at", name="check_event_start_after_created"), # start_at가 NULL이어도 통과
         CheckConstraint("end_at > start_at", name="check_event_end_after_start"),
         CheckConstraint("like_count >= 0", name="check_like_count_positive"),
     )

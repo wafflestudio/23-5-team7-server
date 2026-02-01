@@ -3,6 +3,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from jose import jwt
 from snu_toto.app.core.config import AUTH_SETTINGS
+from snu_toto.app.core.date_utils import get_kst_now
 
 # argon2를 기본 해시 알고리즘으로 설정
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
@@ -17,7 +18,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def create_jwt_token(user_id: int, purpose: str, expires_delta: timedelta, secret: str):
     """비밀키를 선택하여 JWT를 생성하는 함수"""
-    expire = datetime.now() + expires_delta
+    expire = get_kst_now() + expires_delta
     to_encode = {
         "sub": str(user_id),
         "purpose": purpose,
@@ -67,7 +68,7 @@ def get_token_remaining_seconds(token: str, secret: str) -> int:
         if not exp:
             return 0
 
-        remaining = datetime.fromtimestamp(exp) - datetime.now()
+        remaining = datetime.fromtimestamp(exp) - get_kst_now()
         seconds = int(remaining.total_seconds())
         return max(seconds, 0)
     except jwt.JWTError:

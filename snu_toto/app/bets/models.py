@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING
 
+from snu_toto.app.core.date_utils import get_kst_now
+
 if TYPE_CHECKING:
     from snu_toto.app.users.models import User, PointHistory
     from snu_toto.app.events.models import Event, EventOption
@@ -65,7 +67,7 @@ class Bet(Base):
     # 베팅 시각
     created_at: Mapped[DateTime] = mapped_column(
         DateTime, 
-        server_default=func.now(), 
+        default=get_kst_now,
         nullable=False
     )
 

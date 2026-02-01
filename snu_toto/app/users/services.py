@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User, PointReason
 from snu_toto.app.users.schemas import (
     SocialType, 
@@ -42,12 +43,12 @@ class UserService:
         if withdrawal_record:
             cooldown_period = timedelta(days=30)
             # 현재 시각과 탈퇴 시각 비교
-            now_utc = datetime.now()
+            now = get_kst_now()
             
             # 만약 탈퇴 시점으로부터 30일이 지나지 않았다면
-            if now_utc - withdrawal_record.deleted_at < cooldown_period:
+            if now - withdrawal_record.deleted_at < cooldown_period:
                 # 남은 일수 계산
-                remaining_time = (withdrawal_record.deleted_at + cooldown_period) - now_utc
+                remaining_time = (withdrawal_record.deleted_at + cooldown_period) - now
                 remaining_days = remaining_time.days + (1 if remaining_time.seconds > 0 else 0)
 
                 raise ReRegistrationLimitException(remaining_days=remaining_days)

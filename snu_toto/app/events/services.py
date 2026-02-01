@@ -2,6 +2,7 @@ import filetype
 import base64
 from redis.asyncio import Redis
 from snu_toto.app.bets.settlement.engine import SettlementEngine
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.events.repositories import EventRepositories
 from snu_toto.app.events.exceptions import EventNotFoundError, ImageIndexOutOfBoundsError, ImageTooLargeError, ImageUploadFailedError, InvalidImageFormatError, InvalidStatusTransitionError, InvalidWinnerOptionError, NotClosedEventError, InvalidCursorError
 from fastapi import Depends, UploadFile
@@ -298,11 +299,11 @@ class EventServices:
         
         # OPEN으로 변경 시: 시작 시각을 현재로
         if new_status == EventStatus.OPEN:
-            update_data["start_at"] = datetime.now()
+            update_data["start_at"] = get_kst_now()
         
         # CLOSED로 변경 시: 종료 시각을 현재로
         elif new_status == EventStatus.CLOSED:
-            update_data["end_at"] = datetime.now()
+            update_data["end_at"] = get_kst_now()
 
         session = self.event_repositories.session
 

@@ -3,6 +3,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import desc, func, update
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
@@ -265,7 +266,7 @@ class UserRepository:
             return {
                 "total_count": int(values[0]) if values[0] else 0,
                 "top_list": json.loads(values[1]) if values[1] else [],
-                "updated_at": values[2] if values[2] else datetime.now().isoformat()
+                "updated_at": values[2] if values[2] else get_kst_now().isoformat()
             }
         finally:
             await redis.close()
@@ -309,7 +310,7 @@ class UserRepository:
         """유저 정보를 비식별화하고 탈퇴 이력을 한 트랜잭션으로 기록"""
         # 유저 정보 비식별화 (Unique 제약 충돌 방지를 위해 UUID 활용)
         unique_id = str(user.user_id)[:12]
-        user.email = f"deleted_{unique_id}_{datetime.now().timestamp()}@snu.ac.kr"
+        user.email = f"deleted_{unique_id}_{get_kst_now().timestamp()}@snu.ac.kr"
         user.nickname = f"탈퇴유저_{unique_id}"
         user.hashed_password = None
         user.social_id = None

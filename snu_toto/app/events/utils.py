@@ -4,6 +4,7 @@ import aioboto3
 from fastapi import UploadFile
 from snu_toto.app.common.exceptions import InvalidFormatException
 from snu_toto.app.core.config import S3_SETTINGS
+from snu_toto.app.core.date_utils import get_kst_now
 
 def parse_event_data(data: str):
     """JSON 문자열을 EventCreateRequest 모델로 변환"""
@@ -26,7 +27,7 @@ class S3Uploader:
             aws_access_key_id=S3_SETTINGS.S3_AWS_ACCESS_KEY_ID,
             aws_secret_access_key=S3_SETTINGS.S3_AWS_SECRET_ACCESS_KEY,
         ) as s3:
-            file_path = f"{folder}/{datetime.now().timestamp()}_{file.filename}"
+            file_path = f"{folder}/{get_kst_now().timestamp()}_{file.filename}"
             
             # S3 업로드 실행
             await s3.upload_fileobj(file.file, self.bucket_name, file_path)
