@@ -15,6 +15,7 @@ from snu_toto.app.users.scheduler import start_ranking_scheduler
 from snu_toto.app.users import models as user_models
 from snu_toto.app.events import models as event_models
 from snu_toto.app.bets import models as bet_models
+from snu_toto.app.comments import models as comment_models
 
 
 @asynccontextmanager
@@ -64,6 +65,7 @@ from .events.router import event_router
 from .bets.router import bet_router
 from .admin.router import admin_router
 from .likes.router import router as likes_router
+from .comments.router import comment_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(users_router, prefix="/api/users", tags=["users"])
@@ -71,6 +73,7 @@ app.include_router(event_router, prefix="/api/events", tags=["events"])
 app.include_router(bet_router, prefix="/api", tags=["bets"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 app.include_router(likes_router)
+app.include_router(comment_router, prefix="/api", tags=["comments"])
 
 # 커스텀 예외 핸들러
 @app.exception_handler(SnutotoException)
