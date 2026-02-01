@@ -67,3 +67,8 @@ class CommentRepository:
         await self.session.flush()
         await self.session.refresh(comment, attribute_names=["user"])
         return comment
+
+    async def delete_comment(self, comment: Comment) -> None:
+        """댓글 삭제"""
+        await self.session.delete(comment)
+        await self.session.flush()

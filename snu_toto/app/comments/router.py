@@ -1,10 +1,10 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from pydantic import ValidationError
 from snu_toto.app.comments.services import CommentService
 from snu_toto.app.comments.schemas import CommentCreateRequest, CommentUpdateRequest, CommentResponse, CommentListResponse
 from snu_toto.app.auth.dependencies import get_current_user
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import User, UserRole
 from snu_toto.app.common.exceptions import SnutotoException, InvalidFormatException
 
 
@@ -75,3 +75,19 @@ async def update_comment(
             if isinstance(original_error, SnutotoException):
                 raise original_error
         raise
+
+
+@comment_router.delete("/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: str,
+    service: Annotated[CommentService, Depends()],
+    current_user: User = Depends(get_current_user)
+) -> Response:
+    """댓글 삭제 (작성자 또는 관리자만 가능)"""
+    is_admin = current_user.role == UserRole.ADMIN
+    await service.delete_comment(
+        comment_id=comment_id,
+        user_id=current_user.user_id,
+        is_admin=is_admin
+    )
+    return Response(status_code=204)

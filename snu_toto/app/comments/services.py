@@ -153,3 +153,22 @@ class CommentService:
             created_at=updated_comment.created_at,
             updated_at=updated_comment.updated_at
         )
+
+    async def delete_comment(
+        self,
+        comment_id: str,
+        user_id: str,
+        is_admin: bool = False
+    ) -> None:
+        """댓글 삭제"""
+        # 댓글 조회
+        comment = await self.comment_repository.get_comment_by_id(comment_id)
+        if not comment:
+            raise CommentNotFoundForUpdateError()
+
+        # 권한 확인 (작성자 또는 관리자만 삭제 가능)
+        if not is_admin and comment.user_id != user_id:
+            raise NotCommentOwnerError()
+
+        # 댓글 삭제
+        await self.comment_repository.delete_comment(comment)
