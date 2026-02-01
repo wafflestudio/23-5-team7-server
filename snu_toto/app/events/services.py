@@ -208,9 +208,12 @@ class EventServices:
             description=event.description,
             status=event.status,
             total_participants=total_participants,
+            created_at=event.created_at,
+            start_at=event.start_at,
             end_at=event.end_at,
             like_count=like_count,
             is_liked=is_liked,
+            is_eligible=event.is_eligible,
             options=option_responses,
             images=image_responses
         )

@@ -93,9 +93,12 @@ class EventDetailResponse(BaseModel):
     description: str | None
     status: EventStatus
     total_participants: int
+    created_at: datetime
+    start_at: datetime
     end_at: datetime
     like_count: int
     is_liked: bool | None
+    is_eligible: bool
     options: list[OptionResponse]
     images: list[ImageResponse]
 
