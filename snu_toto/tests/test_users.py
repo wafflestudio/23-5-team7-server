@@ -167,3 +167,82 @@ async def test_create_user_social_missing_social_id(async_client: AsyncClient):
     assert response.status_code == 400
     error = response.json()
     assert error["error_code"] == "ERR_017"
+
+
+# =============================================================================
+# 1-2. 닉네임 변경 (PATCH /api/users/me/nickname)
+# =============================================================================
+from snu_toto.tests.conftest import auth_header, assert_error_response
+
+
+@pytest.mark.asyncio
+async def test_update_nickname_success_U09(async_client: AsyncClient, auth_token: str):
+    """(U09) 닉네임 변경 성공"""
+    new_nickname = "새닉네임"
+    response = await async_client.patch(
+        "/api/users/me/nickname",
+        json={"nickname": new_nickname},
+        headers=auth_header(auth_token)
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nickname"] == new_nickname
+# end def
+
+
+@pytest.mark.asyncio
+async def test_update_nickname_duplicate_U10(async_client: AsyncClient, auth_token: str):
+    """(U10) 닉네임 중복"""
+    other_user = {
+        "email": "other@snu.ac.kr",
+        "password": "password123",
+        "nickname": "사용중닉네임",
+    }
+    await async_client.post("/api/users", json=other_user)
+    
+    response = await async_client.patch(
+        "/api/users/me/nickname",
+        json={"nickname": "사용중닉네임"},
+        headers=auth_header(auth_token)
+    )
+    
+    assert_error_response(response, 409, "ERR_007")
+# end def
+
+
+# =============================================================================
+# 1-3. 비밀번호 변경 (PATCH /api/users/me/password)
+# =============================================================================
+@pytest.mark.asyncio
+async def test_update_password_success_U11(async_client: AsyncClient, auth_token: str, user_signup_data: dict):
+    """(U11) 비밀번호 변경 성공"""
+    response = await async_client.patch(
+        "/api/users/me/password",
+        json={
+            "current_password": user_signup_data["password"],
+            "new_password": "newpassword456"
+        },
+        headers=auth_header(auth_token)
+    )
+    
+    assert response.status_code == 200
+    data = response.json()
+    assert "message" in data
+# end def
+
+
+@pytest.mark.asyncio
+async def test_update_password_wrong_current_U12(async_client: AsyncClient, auth_token: str):
+    """(U12) 현재 비밀번호 틀림"""
+    response = await async_client.patch(
+        "/api/users/me/password",
+        json={
+            "current_password": "wrongpassword",
+            "new_password": "newpassword456"
+        },
+        headers=auth_header(auth_token)
+    )
+    
+    assert_error_response(response, 401, "ERR_014")
+# end def

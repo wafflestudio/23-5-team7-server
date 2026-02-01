@@ -83,15 +83,30 @@ async def db_engine():
         connect_args={"check_same_thread": False},
     )
 
+    # MySQL 전용 CheckConstraint 제거 (SQLite 호환성)
+    from snu_toto.app.events.models import Event
+    mysql_only_constraints = ["check_event_start_after_created"]
+    
+    original_constraints = list(Event.__table__.constraints)
+    for constraint in original_constraints:
+        if hasattr(constraint, "name") and constraint.name in mysql_only_constraints:
+            Event.__table__.constraints.remove(constraint)
+        # end if
+    # end for
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # end with
 
     try:
         yield engine
     finally:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
+        # end with
         await engine.dispose()
+    # end try
+# end def
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -111,13 +126,85 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
 # =============================================================================
 # HTTP 클라이언트
 # =============================================================================
+from unittest.mock import AsyncMock
+
+
+class MockRedis:
+    """테스트용 Redis Mock"""
+    def __init__(self):
+        self.data = {}
+        self.sorted_sets = {}  # zadd용
+    # end def
+    
+    async def exists(self, key):
+        return key in self.data
+    # end def
+    
+    async def get(self, key):
+        return self.data.get(key)
+    # end def
+    
+    async def setex(self, key, ttl, value):
+        self.data[key] = value
+    # end def
+    
+    async def delete(self, key):
+        if key in self.data:
+            del self.data[key]
+        # end if
+    # end def
+    
+    async def zadd(self, key, mapping):
+        """Sorted set에 추가"""
+        if key not in self.sorted_sets:
+            self.sorted_sets[key] = {}
+        # end if
+        self.sorted_sets[key].update(mapping)
+    # end def
+    
+    async def zrem(self, key, *members):
+        """Sorted set에서 삭제"""
+        if key in self.sorted_sets:
+            for member in members:
+                self.sorted_sets[key].pop(member, None)
+            # end for
+        # end if
+    # end def
+    
+    async def zrangebyscore(self, key, min_score, max_score, withscores=False):
+        """Score 범위로 조회"""
+        if key not in self.sorted_sets:
+            return []
+        # end if
+        items = self.sorted_sets[key]
+        result = [(k, v) for k, v in items.items() if min_score <= v <= max_score]
+        if withscores:
+            return result
+        # end if
+        return [k for k, v in result]
+    # end def
+    
+    async def close(self):
+        pass
+    # end def
+# end class
+
+
 @pytest_asyncio.fixture
 async def async_client(db_session) -> AsyncGenerator[AsyncClient, None]:
     """비동기 HTTP 클라이언트 (의존성 오버라이드 포함)"""
+    from snu_toto.app.auth.dependencies import get_redis
+    
     async def override_get_db_session():
         yield db_session
+    # end def
+    
+    async def override_get_redis():
+        yield MockRedis()
+    # end def
 
     app.dependency_overrides[get_db_session] = override_get_db_session
+    app.dependency_overrides[get_redis] = override_get_redis
 
     transport = ASGITransport(app=app)
     async with AsyncClient(
@@ -128,6 +215,7 @@ async def async_client(db_session) -> AsyncGenerator[AsyncClient, None]:
         yield ac
     
     app.dependency_overrides.clear()
+# end def
 
 
 # =============================================================================
