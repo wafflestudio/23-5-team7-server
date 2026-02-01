@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
 from snu_toto.app.core.config import DB_SETTINGS, REDIS_SETTINGS
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User
 from redis.asyncio import from_url
 
@@ -20,8 +21,8 @@ async def update_all_rankings():
     매시 정각에 실행되는 배치 작업
     전체 유저의 랭킹을 계산하여 Redis에 저장
     """
-    updated_at = datetime.now().isoformat() # 배치 시작 시각 기록
-    print(f"[{datetime.now()}] 랭킹 업데이트 시작...")
+    updated_at = get_kst_now().isoformat() # 배치 시작 시각 기록
+    print(f"[{get_kst_now()}] 랭킹 업데이트 시작...")
     
     # DB 연결
     engine = create_async_engine(DB_SETTINGS.url)
@@ -50,7 +51,7 @@ async def update_all_rankings():
                 pipe = redis.pipeline()
 
                 # 다음 정각까지 유효 (남은 시간 계산)
-                now = datetime.now()
+                now = get_kst_now()
                 seconds_until_next_hour = 3600 - (now.minute * 60 + now.second)
 
                 # 글로벌 데이터: 전체 유저 수 저장

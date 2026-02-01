@@ -8,6 +8,7 @@ from snu_toto.app.auth.exceptions import EmailVerificationRequiredException, Inv
 from snu_toto.app.auth.providers.google import GoogleAuthClient
 from snu_toto.app.auth.schemas import GoogleAuthResponse, GoogleUserResult, LoginResponse, UserLoginResult
 from snu_toto.app.core.config import AUTH_SETTINGS
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.core.security import create_login_access_token, create_refresh_token, create_verification_token, decode_jwt_token, get_email_hash, verify_password
 from snu_toto.app.users.exceptions import EmailAlreadyExistsException, OnlySnuEmailAllowedException
 from snu_toto.app.users.models import User
@@ -94,7 +95,7 @@ class AuthService:
         if not user.suspended_until:
             return
 
-        if datetime.now() < user.suspended_until:
+        if get_kst_now() < user.suspended_until:
             raise SuspendedUserException(
                 suspension_reason=user.suspension_reason,
                 suspended_until=user.suspended_until
