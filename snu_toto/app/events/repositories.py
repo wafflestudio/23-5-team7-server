@@ -139,6 +139,7 @@ class EventRepositories:
         query = (
             select(Event)
             .where(Event.status == EventStatus.READY)
+            .where(Event.is_eligible == False) # 오픈 자격이 부여되지 않은 것만 대상
             .where(Event.like_count >= min_likes)
             .order_by(desc(Event.like_count), Event.created_at.asc()) # 좋아요 같으면 먼저 생성된 것 우선
             .limit(limit)

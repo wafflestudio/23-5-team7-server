@@ -122,6 +122,16 @@ class EventServices:
     async def update_event_status_auto(self, event_id: str, target_status: EventStatus, expected_status: EventStatus):
         """자동 이벤트 상태 업데이트"""
         session = self.event_repositories.session
+
+        # READY -> OPEN 시도일 때만 is_eligible 검사
+        if target_status == EventStatus.OPEN and expected_status == EventStatus.READY:
+            event = await self.event_repositories.get_event_by_id(event_id)
+            if not event:
+                return False
+            
+            # 자격이 없다면 목표 상태를 CANCELLED 변경
+            if not event.is_eligible:
+                target_status = EventStatus.CANCELLED
         
         if not session.in_transaction():
             async with session.begin():

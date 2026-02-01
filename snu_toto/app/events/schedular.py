@@ -27,7 +27,7 @@ async def auto_update_event_status():
                 now_ts = int(kst_now.timestamp())
                 
                 # 1. 매일 20:00 인기 이벤트 선정 배치
-                if kst_now.hour == 4 and kst_now.minute == 40:
+                if kst_now.hour == 20 and kst_now.minute == 0:
                     # 오늘 날짜로 된 전용 키 생성 (예: event:batch:done:2026-02-02)
                     today_str = kst_now.strftime("%Y-%m-%d")
                     batch_lock_key = f"event:batch:done:{today_str}"
