@@ -10,6 +10,7 @@ from snu_toto.app.core.date_utils import get_kst_now
 if TYPE_CHECKING:
     from snu_toto.app.bets.models import Bet
     from snu_toto.app.events.models import Event
+    from snu_toto.app.comments.models import Comment
 
 class UserRole(str, enum.Enum):
     """관리자 여부를 위한 Enum"""
@@ -137,7 +138,7 @@ class User(Base):
     point_histories: Mapped[list["PointHistory"]] = relationship("PointHistory", back_populates="user")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="user")
     created_events: Mapped[list["Event"]] = relationship("Event", back_populates="creator")
-    # likes relationship은 순환 참조를 방지하기 위해 제거됨. 필요시 직접 쿼리 사용
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="user", cascade="all, delete-orphan")
     withdrawal_info: Mapped["UserWithdrawal"] = relationship("UserWithdrawal", back_populates="user", uselist=False)
 
     __table_args__ = (

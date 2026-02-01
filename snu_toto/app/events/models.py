@@ -7,10 +7,9 @@ from snu_toto.app.core.database import Base
 from typing import TYPE_CHECKING
 
 from snu_toto.app.core.date_utils import get_kst_now
-
-if TYPE_CHECKING:
-    from snu_toto.app.users.models import User
-    from snu_toto.app.bets.models import Bet
+from snu_toto.app.users.models import User
+from snu_toto.app.bets.models import Bet
+from snu_toto.app.comments.models import Comment
 
 class EventStatus(str, enum.Enum):
     """이벤트 상태를 위한 Enum"""
@@ -88,7 +87,7 @@ class Event(Base):
     images: Mapped[list["EventImage"]] = relationship("EventImage", back_populates="event")
     creator: Mapped["User"] = relationship("User", back_populates="created_events")
     bets: Mapped[list["Bet"]] = relationship("Bet", back_populates="event")
-    # likes relationship은 순환 참조를 방지하기 위해 제거됨. 필요시 직접 쿼리 사용
+    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="event", cascade="all, delete-orphan")
 
     __table_args__ = (
         CheckConstraint("CHAR_LENGTH(title) >= 5", name="check_event_title_length"),

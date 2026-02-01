@@ -15,6 +15,7 @@ from snu_toto.app.users.scheduler import start_ranking_scheduler
 from snu_toto.app.users import models as user_models
 from snu_toto.app.events import models as event_models
 from snu_toto.app.bets import models as bet_models
+from snu_toto.app.comments import models as comment_models
 
 
 @asynccontextmanager
