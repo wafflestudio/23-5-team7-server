@@ -1,10 +1,14 @@
 from datetime import datetime, timedelta
+import math
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
+from snu_toto.app.common.schemas import PaginationInfo
 from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User, PointReason
 from snu_toto.app.users.schemas import (
+    AdminUserListResponse,
+    AdminUserResponse,
     SocialType, 
     UserSignupRequest,
     UserBetsResponse,
@@ -240,3 +244,41 @@ class UserService:
             updated_at=ranking_data["updated_at"],
             rankings=ranking_data["top_list"][:limit]
         )
+    
+    async def get_users_for_admin(self, page: int, limit: int, search: Optional[str], status_filter: Optional[str]):
+        users, total_count = await self.user_repo.get_admin_user_list(page, limit, search, status_filter)
+        
+        now = get_kst_now()
+        user_list = []
+        
+        for u in users:
+            # 논리적 상태 계산 로직
+            if u.is_deleted:
+                calculated_status = "DELETED"
+            elif u.suspended_until and u.suspended_until > now:
+                calculated_status = "SUSPENDED"
+            else:
+                calculated_status = "ACTIVE"
+            
+            user_list.append(AdminUserResponse(
+                user_id=u.user_id,
+                email=u.email,
+                nickname=u.nickname,
+                points=u.points,
+                status=calculated_status,
+                role=u.role,
+                is_snu_verified=u.is_snu_verified,
+                created_at=u.created_at,
+                suspended_until=u.suspended_until
+            ))
+
+        return AdminUserListResponse(
+            users=user_list,
+            pagination=PaginationInfo(
+                total=total_count,
+                current_page=page,
+                limit=limit,
+                total_pages=math.ceil(total_count / limit) if total_count > 0 else 0
+            )
+        )
+    
