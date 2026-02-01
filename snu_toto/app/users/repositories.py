@@ -43,7 +43,15 @@ class UserRepository:
     async def create(self, user: User) -> User:
         """사용자 객체를 DB에 저장"""
         self.db.add(user)
-        await self.db.flush() 
+        await self.db.flush()
+        
+        # 신규 가입 포인트 기록 저장
+        self.db.add(PointHistory(
+                    user_id=user.user_id,
+                    change_amount=user.points,
+                    reason=PointReason.SIGNUP,
+                    points_after=user.points
+                ))
         return user
 
     async def get_user_bets(
