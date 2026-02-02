@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from datetime import datetime, timedelta
 import json
 import uuid
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.tests.conftest import auth_header, assert_error_response, multipart_headers, EMPTY_FILES
 
 # =============================================================================
@@ -18,8 +19,8 @@ async def unsettled_closed_event_id(async_client: AsyncClient, admin_token: str,
     일반 유저가 베팅을 한 상태로 만든 후 ID 반환
     """
     # 1. Create Event (OPEN immediately via update logic or just create open)
-    start_at = (datetime.now() + timedelta(hours=1)).isoformat()
-    end_at = (datetime.now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": f"정산 테스트용 이벤트 {uuid.uuid4()}",
@@ -64,8 +65,8 @@ async def unsettled_closed_event_id(async_client: AsyncClient, admin_token: str,
 @pytest.fixture
 async def settled_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """이미 SETTLED 된 이벤트 ID 반환"""
-    start_at = (datetime.now() + timedelta(hours=1)).isoformat()
-    end_at = (datetime.now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {"title": f"이미 정산된 이벤트 {uuid.uuid4()}", "description": "-", "start_at": start_at, "end_at": end_at, "options": [{"name": "A", "option_image_index": -1}, {"name": "B", "option_image_index": -1}]}
     
@@ -147,8 +148,8 @@ async def test_settle_already_settled_S02(async_client: AsyncClient, admin_token
 async def test_settle_event_not_closed_S03(async_client: AsyncClient, admin_token: str, auth_token: str):
     """S03: CLOSED 상태가 아닌 이벤트 정산 시도 (ERR_032)"""
     # Create OPEN event
-    start_at = (datetime.now() + timedelta(hours=1)).isoformat()
-    end_at = (datetime.now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     event_data = {"title": f"오픈 이벤트 {uuid.uuid4()}", "description": "-", "start_at": start_at, "end_at": end_at, "options": [{"name": "A", "option_image_index": -1}, {"name": "B", "option_image_index": -1}]}
     
     create_res = await async_client.post("/api/events", data={"data": json.dumps(event_data)}, files=EMPTY_FILES, headers=auth_header(admin_token))
