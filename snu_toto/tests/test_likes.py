@@ -31,8 +31,8 @@ def multipart_headers(token: str) -> dict:
 @pytest.fixture
 async def ready_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """READY 상태의 이벤트 생성 후 ID 반환"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=3)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=5)).isoformat()
     
     event_data = {
         "title": f"좋아요 테스트 이벤트 {uuid.uuid4()}",
@@ -59,8 +59,8 @@ async def ready_event_id(async_client: AsyncClient, admin_token: str) -> str:
 @pytest.fixture
 async def open_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """OPEN 상태의 이벤트 생성 후 ID 반환"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=3)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=5)).isoformat()
     
     event_data = {
         "title": f"좋아요 테스트 OPEN 이벤트 {uuid.uuid4()}",
@@ -231,8 +231,8 @@ async def test_event_detail_includes_like_info_L06(async_client: AsyncClient, au
 @pytest.mark.asyncio
 async def test_event_list_liked_filter_L07(async_client: AsyncClient, auth_token: str, admin_token: str):
     """L07: 좋아요한 이벤트만 필터링 (GET /api/events?liked=true)"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=3)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=5)).isoformat()
     
     # 1. 이벤트 2개 생성
     event_ids = []
