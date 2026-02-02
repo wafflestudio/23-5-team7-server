@@ -43,9 +43,11 @@ class EventCreateRequest(BaseModel):
     @model_validator(mode='after')
     def validate_dates(self) -> 'EventCreateRequest':
         now = get_kst_now()
-        if self.start_at < now + timedelta(seconds=10):
+        # 생성일 기준 최소 2일 후 시작 가능
+        if self.start_at <= now + timedelta(days=2):
             raise InvalidDateError()
-        if self.end_at <= self.start_at:
+        # 시작일 기준 최소 1일 후 종료 가능
+        if self.end_at <= self.start_at + timedelta(days=1):
             raise InvalidDateError()
         return self
     
@@ -91,9 +93,12 @@ class EventDetailResponse(BaseModel):
     description: str | None
     status: EventStatus
     total_participants: int
+    created_at: datetime
+    start_at: datetime
     end_at: datetime
     like_count: int
     is_liked: bool | None
+    is_eligible: bool
     options: list[OptionResponse]
     images: list[ImageResponse]
 

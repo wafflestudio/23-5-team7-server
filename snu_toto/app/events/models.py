@@ -83,6 +83,14 @@ class Event(Base):
         nullable=False
     )
 
+    # 오픈가능여부
+    is_eligible: Mapped[bool] = mapped_column(
+        Boolean, 
+        default=False,
+        server_default="0",
+        nullable=False
+    )
+
     options: Mapped[list["EventOption"]] = relationship("EventOption", back_populates="event")
     images: Mapped[list["EventImage"]] = relationship("EventImage", back_populates="event")
     creator: Mapped["User"] = relationship("User", back_populates="created_events")

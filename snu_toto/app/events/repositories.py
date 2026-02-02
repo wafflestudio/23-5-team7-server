@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import Depends
-from sqlalchemy import select, update
+from sqlalchemy import desc, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from snu_toto.app.bets.models import Bet
@@ -133,3 +133,27 @@ class EventRepositories:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+    
+    async def get_top_liked_ready_events(self, limit: int, min_likes: int):
+        """좋아요 순으로 상위 READY 이벤트 조회"""
+        query = (
+            select(Event)
+            .where(Event.status == EventStatus.READY)
+            .where(Event.is_eligible == False) # 오픈 자격이 부여되지 않은 것만 대상
+            .where(Event.like_count >= min_likes)
+            .order_by(desc(Event.like_count), Event.created_at.asc()) # 좋아요 같으면 먼저 생성된 것 우선
+            .limit(limit)
+        )
+        result = await self.session.execute(query)
+        return result.scalars().all()
+
+    async def update_is_eligible(self, event_ids: list[str], value: bool = True):
+        """여러 이벤트의 is_eligible 필드를 일괄 업데이트"""
+        if not event_ids:
+            return
+            
+        await self.session.execute(
+            update(Event)
+            .where(Event.event_id.in_(event_ids))
+            .values(is_eligible=value)
+        )
