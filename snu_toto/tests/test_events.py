@@ -25,8 +25,8 @@ EMPTY_FILES = {"ignore_me": ("ignore.txt", b"", "text/plain")}
 async def test_create_event_success_E01(async_client: AsyncClient, admin_token: str):
     """E01: 관리자 권한으로 이벤트 생성 성공 (옵션 2개 이상)"""
     # Given
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": "테스트 이벤트입니다",
@@ -63,8 +63,8 @@ async def test_create_event_success_E01(async_client: AsyncClient, admin_token: 
 @pytest.mark.asyncio
 async def test_create_event_success_E02(async_client: AsyncClient, admin_token: str):
     """E02: 옵션 3개로 생성 성공"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": "3파전 이벤트 테스트",
@@ -94,8 +94,8 @@ async def test_create_event_success_E02(async_client: AsyncClient, admin_token: 
 @pytest.mark.asyncio
 async def test_create_event_duplicate_options_E03(async_client: AsyncClient, admin_token: str):
     """E03: 중복된 옵션 이름이 있는 경우 실패"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": "중복 옵션 테스트",
@@ -156,8 +156,8 @@ async def test_create_event_invalid_dates_E07(async_client: AsyncClient, admin_t
 @pytest.mark.asyncio
 async def test_create_event_option_count_E08_E09(async_client: AsyncClient, admin_token: str):
     """E08, E09: 옵션 개수 제한 (2개 미만, 10개 초과)"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(hours=2)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     # Less than 2
     event_data = {
@@ -216,8 +216,8 @@ async def test_create_event_non_admin_E13(async_client: AsyncClient, auth_token:
 @pytest.fixture
 async def ready_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """READY 상태의 이벤트를 생성하고 ID 반환"""
-    start_at = (get_kst_now() + timedelta(hours=1)).isoformat()
-    end_at = (get_kst_now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     event_data = {
         "title": "상태 변경 테스트용",
         "start_at": start_at,

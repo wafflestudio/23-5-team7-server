@@ -5,6 +5,7 @@ from httpx import AsyncClient
 from datetime import datetime, timedelta
 import json
 import uuid
+from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.tests.conftest import auth_header, assert_error_response, multipart_headers, EMPTY_FILES
 
 # =============================================================================
@@ -14,8 +15,8 @@ from snu_toto.tests.conftest import auth_header, assert_error_response, multipar
 @pytest.fixture
 async def open_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """OPEN 상태의 이벤트를 생성하고 ID 반환"""
-    start_at = (datetime.now() + timedelta(hours=1)).isoformat()
-    end_at = (datetime.now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": f"베팅 테스트용 오픈 이벤트 {uuid.uuid4()}",
@@ -48,8 +49,8 @@ async def open_event_id(async_client: AsyncClient, admin_token: str) -> str:
 @pytest.fixture
 async def closed_event_id(async_client: AsyncClient, admin_token: str) -> str:
     """CLOSED 상태의 이벤트를 생성하고 ID 반환"""
-    start_at = (datetime.now() + timedelta(hours=1)).isoformat()
-    end_at = (datetime.now() + timedelta(days=1)).isoformat()
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
     
     event_data = {
         "title": f"베팅 테스트용 마감 이벤트 {uuid.uuid4()}",
