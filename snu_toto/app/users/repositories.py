@@ -2,7 +2,7 @@ from typing import Annotated, Optional, List
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import desc, func, update
+from sqlalchemy import and_, desc, func, or_, update
 from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
@@ -344,3 +344,34 @@ class UserRepository:
         )
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+    
+    async def get_admin_user_list(self, page: int, limit: int, search: Optional[str], status_filter: Optional[str]):
+        query = select(User)
+
+        # 상태 필터링
+        now = datetime.now()
+        if status_filter == "DELETED":
+            query = query.where(User.is_deleted == True)
+        elif status_filter == "SUSPENDED":
+            query = query.where(and_(User.is_deleted == False, User.suspended_until > now))
+        elif status_filter == "ACTIVE":
+            query = query.where(and_(
+                User.is_deleted == False,
+                or_(User.suspended_until == None, User.suspended_until <= now)
+            ))
+
+        # 검색 필터링
+        if search:
+            query = query.where(or_(User.nickname.contains(search), User.email.contains(search)))
+
+        # 전체 개수 조회 (페이지네이션용)
+        count_query = select(func.count()).select_from(query.subquery())
+        total_res = await self.db.execute(count_query)
+        total_count = total_res.scalar() or 0
+
+        # 데이터 조회 (최신순 정렬 및 페이징)
+        query = query.order_by(User.created_at.desc()).offset((page - 1) * limit).limit(limit)
+        result = await self.db.execute(query)
+        users = result.scalars().all()
+
+        return users, total_count

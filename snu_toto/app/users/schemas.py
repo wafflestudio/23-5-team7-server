@@ -4,6 +4,7 @@ from enum import Enum
 from datetime import datetime
 
 from snu_toto.app.common.exceptions import InvalidFormatException, MissingRequiredFieldException
+from snu_toto.app.common.schemas import PaginationInfo
 from snu_toto.app.users.exceptions import *
 from snu_toto.app.users.models import PointReason, SocialType, UserRole
 from snu_toto.app.bets.models import BetStatus
@@ -183,3 +184,25 @@ class UserSuspendResponse(BaseModel):
 
     user_id: str
     suspension_info: SuspensionInfo
+
+class UserStatus(str, Enum):
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    DELETED = "DELETED"
+
+class AdminUserResponse(BaseModel):
+    user_id: str
+    email: str
+    nickname: str
+    points: int
+    status: UserStatus
+    role: str
+    is_snu_verified: bool
+    created_at: datetime
+    suspended_until: Optional[datetime] = None
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserResponse]
+    pagination: PaginationInfo
+
+

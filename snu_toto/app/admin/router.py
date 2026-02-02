@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -7,10 +7,12 @@ from snu_toto.app.auth.dependencies import get_current_admin_user
 from snu_toto.app.bets.schemas import AdminBetListResponse
 from snu_toto.app.core.database import get_db_session, engine, Base
 from snu_toto.app.core.config import SETTINGS
+from snu_toto.app.users.dependencies import get_user_service
 from snu_toto.app.users.models import User
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.bets.models import Bet
-from snu_toto.app.users.schemas import UserAdminResponse, UserRoleUpdateRequest, UserSuspendRequest, UserSuspendResponse
+from snu_toto.app.users.schemas import AdminUserListResponse, UserAdminResponse, UserRoleUpdateRequest, UserStatus, UserSuspendRequest, UserSuspendResponse
+from snu_toto.app.users.services import UserService
 
 # seed 함수들 import
 from .seed_test_data import create_test_users, create_test_events, create_test_bets
@@ -61,6 +63,18 @@ async def suspend_user(
         target_user_id=user_id,
         data=payload
     )
+
+@admin_router.get("/users")
+async def get_admin_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1),
+    search: Optional[str] = None,
+    status_filter: Optional[UserStatus] = Query(None, alias="status"),
+    current_user: User = Depends(get_current_admin_user),
+    user_service: UserService = Depends(get_user_service)
+)->AdminUserListResponse:  
+    return await user_service.get_users_for_admin(page, limit, search, status_filter)
+
 
 ################################################################
 ############# DB 초기화 및 테스트 데이터 생성 관련 코드 ############# 

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List
 from pydantic import BaseModel, Field
 from snu_toto.app.bets.models import BetStatus
+from snu_toto.app.common.schemas import PaginationInfo
 
 class BetCreateRequest(BaseModel):
     option_id: str = Field(..., description="베팅할 옵션 ID")
@@ -39,12 +40,6 @@ class AdminEventSummary(BaseModel):
     title: str
     total_bet_count: int
     total_bet_amount: int
-
-class PaginationInfo(BaseModel):
-    total: int
-    current_page: int
-    limit: int
-    total_pages: int
 
 class AdminBetListResponse(BaseModel):
     event_info: AdminEventSummary
