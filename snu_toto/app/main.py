@@ -64,6 +64,7 @@ from .users.router import users_router
 from .events.router import event_router
 from .bets.router import bet_router
 from .admin.router import admin_router
+from .test_data.router import router as test_router
 from .likes.router import router as likes_router
 from .comments.router import comment_router
 
@@ -72,6 +73,7 @@ app.include_router(users_router, prefix="/api/users", tags=["users"])
 app.include_router(event_router, prefix="/api/events", tags=["events"])
 app.include_router(bet_router, prefix="/api", tags=["bets"])
 app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
+app.include_router(test_router, prefix="/api/test", tags=["test"])
 app.include_router(likes_router)
 app.include_router(comment_router, prefix="/api", tags=["comments"])
 
