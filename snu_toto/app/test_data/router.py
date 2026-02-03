@@ -27,6 +27,82 @@ class CreateTestEventRequest(BaseModel):
 router = APIRouter()
 
 
+@router.post("/clear-data")
+async def clear_test_data(
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Seed data로 생성된 테스트 데이터만 삭제 (사용자가 직접 생성한 데이터는 유지).
+    이메일 패턴으로 인식해서 삭제합니다.
+    admin@snu.ac.kr,
+    user%@snu.ac.kr \
+    """
+    try:
+        from snu_toto.app.likes.models import EventLike
+        from snu_toto.app.comments.models import Comment
+        from snu_toto.app.events.models import EventOption
+        from sqlalchemy import delete
+        
+        # 1. 테스트 유저 조회 (이메일 패턴으로 식별)
+        test_user_result = await db.execute(
+            select(User).where(
+                (User.email == "admin@snu.ac.kr") | 
+                (User.email.like("user%@snu.ac.kr"))
+            )
+        )
+        test_users = test_user_result.scalars().all()
+        test_user_ids = [u.user_id for u in test_users]
+        
+        if not test_user_ids:
+            return {"message": "삭제할 테스트 데이터가 없습니다."}
+        
+        # 2. 테스트 유저가 생성한 이벤트 조회
+        test_event_result = await db.execute(
+            select(Event).where(Event.creator_id.in_(test_user_ids))
+        )
+        test_events = test_event_result.scalars().all()
+        test_event_ids = [e.event_id for e in test_events]
+        
+        # 3. 테스트 이벤트 관련 데이터 삭제
+        if test_event_ids:
+            # 좋아요 삭제
+            await db.execute(delete(EventLike).where(EventLike.event_id.in_(test_event_ids)))
+            # 베팅 삭제
+            await db.execute(delete(Bet).where(Bet.event_id.in_(test_event_ids)))
+            # 댓글 삭제
+            try:
+                await db.execute(delete(Comment).where(Comment.event_id.in_(test_event_ids)))
+            except:
+                pass
+            # 이벤트 옵션 삭제
+            await db.execute(delete(EventOption).where(EventOption.event_id.in_(test_event_ids)))
+            # 이벤트 삭제
+            await db.execute(delete(Event).where(Event.event_id.in_(test_event_ids)))
+        
+        # 4. 테스트 유저의 베팅 삭제 (다른 이벤트에 참여한 경우)
+        await db.execute(delete(Bet).where(Bet.user_id.in_(test_user_ids)))
+        
+        # 5. 테스트 유저 삭제
+        await db.execute(delete(User).where(User.user_id.in_(test_user_ids)))
+        
+        await db.commit()
+        
+        return {
+            "message": "테스트 데이터가 삭제되었습니다.",
+            "deleted": {
+                "users": len(test_user_ids),
+                "events": len(test_event_ids) if test_event_ids else 0
+            }
+        }
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        raise HTTPException(
+            status_code=500,
+            detail=f"데이터 삭제 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
+        )
+
+
 @router.post("/reset-database")
 async def reset_database(
     db: AsyncSession = Depends(get_db_session)
