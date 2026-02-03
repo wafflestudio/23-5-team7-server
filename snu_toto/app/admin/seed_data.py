@@ -170,7 +170,7 @@ class Seeder:
                 "title": "OPEN 1분후종료",
                 "opts": ["맨시티", "무승부", "리버풀"],
                 "status": EventStatus.OPEN,
-                "start": y20 - now,  # 어제 20:00 시작
+                "start": timedelta(days=-2),  # 2일 전 시작
                 "end": timedelta(minutes=1),  # 1분 후 종료
                 "likes": random.sample(users, 5),
                 "bets": [
@@ -182,7 +182,7 @@ class Seeder:
                 "title": "OPEN 1시간후종료",
                 "opts": ["레이커스", "셀틱스"],
                 "status": EventStatus.OPEN,
-                "start": y20 - now,  # 어제 20:00 시작
+                "start": timedelta(days=-2),  # 2일 전 시작
                 "end": timedelta(hours=1),  # 1시간 후 종료
                 "likes": random.sample(users, 5),
                 "bets": [
@@ -194,7 +194,7 @@ class Seeder:
                 "title": "OPEN 1일후종료",
                 "opts": ["맑음", "흐림", "비/눈"],
                 "status": EventStatus.OPEN,
-                "start": timedelta(days=-2),  # 2일 전 시작
+                "start": timedelta(days=-3),  # 3일 전 시작
                 "end": timedelta(days=1),  # 1일 후 종료
                 "likes": random.sample(users, 5),
                 "bets": [
