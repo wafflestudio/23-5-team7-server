@@ -2,20 +2,18 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from redis.asyncio import Redis
 from snu_toto.app.admin.services import AdminServices
-from snu_toto.app.auth.dependencies import get_current_admin_user
+from snu_toto.app.auth.dependencies import get_current_admin_user, get_redis
 from snu_toto.app.bets.schemas import AdminBetListResponse
 from snu_toto.app.core.database import get_db_session, engine, Base
 from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.users.dependencies import get_user_service
 from snu_toto.app.users.models import User
-from snu_toto.app.events.models import Event, EventOption
+from snu_toto.app.events.models import Event, EventOption, EventStatus
 from snu_toto.app.bets.models import Bet
 from snu_toto.app.users.schemas import AdminUserListResponse, UserAdminResponse, UserRoleUpdateRequest, UserStatus, UserSuspendRequest, UserSuspendResponse
 from snu_toto.app.users.services import UserService
-
-# seed 함수들 import
-from .seed_test_data import create_test_users, create_test_events, create_test_bets
 
 
 admin_router = APIRouter()
@@ -108,99 +106,118 @@ async def reset_database(db: AsyncSession = Depends(get_db_session)):
         )
 
 
-@admin_router.post("/seed-test-data")
-async def seed_test_data(db: AsyncSession = Depends(get_db_session)):
+################################################################
+############# Factory 패턴 기반 시딩 ############# 
+################################################################
+
+@admin_router.post("/seed-data")
+async def seed_with_factory(
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis)
+):
     """
-    테스트용 사용자, 이벤트, 베팅 데이터를 생성합니다.
-    
+    생성되는 데이터:
     - 6명의 테스트 사용자
-    - 8개의 다양한 이벤트
-    - 여러 베팅 데이터
-    
-    주의: 프로덕션 환경에서는 사용하지 마세요!
+    - READY 이벤트 4개 (배치 선정 대기 2개, 1분 후 상태전환 2개)
+    - OPEN 이벤트 3개 (1분/1시간/1일 후 종료)
+    - CLOSED 이벤트 2개
+    - 랜덤 베팅 데이터
     """
     try:
-        # 1. 사용자 생성
-        user_ids = await create_test_users(db)
-        await db.commit()
+        from snu_toto.app.admin.seed_data import Seeder
         
-        # 2. 이벤트 생성
-        events = await create_test_events(db, user_ids[0])  # 관리자가 생성
-        await db.commit()
+        seeder = Seeder(db, redis)
+        await seeder.seed()
         
-        # 3. 베팅 생성
-        await create_test_bets(db, user_ids, events)
-        await db.commit()
+        # 통계
+        user_result = await db.execute(select(User))
+        user_count = len(user_result.scalars().all())
         
-        # 통계 정보 가져오기
-        user_count = len(user_ids)
-        event_count = len(events)
+        event_result = await db.execute(select(Event))
+        all_events = event_result.scalars().all()
+        
+        ready_count = len([e for e in all_events if e.status == EventStatus.READY])
+        open_count = len([e for e in all_events if e.status == EventStatus.OPEN])
+        closed_count = len([e for e in all_events if e.status == EventStatus.CLOSED])
         
         bet_result = await db.execute(select(Bet))
         bet_count = len(bet_result.scalars().all())
         
         return {
             "status": "success",
-            "message": "테스트 데이터가 성공적으로 생성되었습니다.",
+            "message": "시드 데이터가 생성되었습니다.",
             "data": {
                 "users_created": user_count,
-                "events_created": event_count,
+                "events_created": len(all_events),
+                "ready_events": ready_count,
+                "open_events": open_count,
+                "closed_events": closed_count,
                 "bets_created": bet_count
             }
         }
     except Exception as e:
         await db.rollback()
+        import traceback
         raise HTTPException(
             status_code=500,
-            detail=f"테스트 데이터 생성 중 오류가 발생했습니다: {str(e)}"
+            detail=f"시딩 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
         )
 
 
-@admin_router.post("/reset-and-seed")
-async def reset_and_seed_database(db: AsyncSession = Depends(get_db_session)):
+@admin_router.post("/reset-and-seed-data")
+async def reset_and_seed_with_factory(
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis)
+):
     """
-    데이터베이스를 초기화하고 테스트 데이터를 생성합니다.
+    DB 초기화 + 시딩을 한 번에 실행
     
-    DB 삭제 → 재생성 → 테스트 데이터 생성을 한 번에 수행합니다.
-    
-    주의: 프로덕션 환경에서는 사용하지 마세요!
+    READY 이벤트:
+    - 배치 선정 대기 2개: 3일 후 시작 예정, is_eligible=False (좋아요 6개/2개)
+    - 1분 후 상태전환 2개: is_eligible=True → OPEN, is_eligible=False → CANCELLED
     """
-    
     try:
         # 1. DB 초기화
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         
-        # 2. 테스트 데이터 생성
-        user_ids = await create_test_users(db)
-        await db.commit()
+        # 2. Factory 시딩
+        from snu_toto.app.admin.seed_data import Seeder
         
-        events = await create_test_events(db, user_ids[0])
-        await db.commit()
+        seeder = Seeder(db, redis)
+        await seeder.seed()
         
-        await create_test_bets(db, user_ids, events)
-        await db.commit()
+        # 통계
+        user_result = await db.execute(select(User))
+        user_count = len(user_result.scalars().all())
         
-        # 통계 정보
-        user_count = len(user_ids)
-        event_count = len(events)
+        event_result = await db.execute(select(Event))
+        all_events = event_result.scalars().all()
+        
+        ready_count = len([e for e in all_events if e.status == EventStatus.READY])
+        open_count = len([e for e in all_events if e.status == EventStatus.OPEN])
+        closed_count = len([e for e in all_events if e.status == EventStatus.CLOSED])
         
         bet_result = await db.execute(select(Bet))
         bet_count = len(bet_result.scalars().all())
         
         return {
             "status": "success",
-            "message": "데이터베이스가 초기화되고 테스트 데이터가 생성되었습니다.",
+            "message": "DB가 초기화되고 데이터가 생성되었습니다.",
             "data": {
                 "users_created": user_count,
-                "events_created": event_count,
+                "events_created": len(all_events),
+                "ready_events": ready_count,
+                "open_events": open_count,
+                "closed_events": closed_count,
                 "bets_created": bet_count
             }
         }
     except Exception as e:
         await db.rollback()
+        import traceback
         raise HTTPException(
             status_code=500,
-            detail=f"데이터베이스 초기화 및 테스트 데이터 생성 중 오류가 발생했습니다: {str(e)}"
+            detail=f"DB 초기화 및 시딩 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
         )
