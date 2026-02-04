@@ -247,6 +247,7 @@ async def delete_user_by_email(
     - 사용자가 생성한 이벤트 (및 해당 이벤트의 좋아요, 베팅, 댓글, 옵션)
     - 사용자의 베팅
     - 사용자의 좋아요
+    - 사용자가 작성한 댓글
     - 사용자 자체
     """
     try:
@@ -301,6 +302,12 @@ async def delete_user_by_email(
         
         # 사용자의 좋아요 삭제
         await db.execute(delete(EventLike).where(EventLike.user_id == user_id))
+        
+        # 사용자가 작성한 댓글 삭제 (다른 이벤트에 작성한 댓글)
+        try:
+            await db.execute(delete(Comment).where(Comment.user_id == user_id))
+        except:
+            pass
         
         # 사용자 삭제
         await db.execute(delete(User).where(User.user_id == user_id))
