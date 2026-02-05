@@ -9,7 +9,8 @@ from snu_toto.app.users.models import User, PointReason
 from snu_toto.app.users.schemas import (
     AdminUserListResponse,
     AdminUserResponse,
-    SocialType, 
+    SocialType,
+    UserResponse, 
     UserSignupRequest,
     UserBetsResponse,
     UserBetItem,
@@ -24,7 +25,7 @@ from snu_toto.app.users.schemas import (
     UpdatePasswordRequest,
     UpdatePasswordResponse
 )
-from snu_toto.app.core.security import get_email_hash, get_password_hash
+from snu_toto.app.core.security import create_verification_token, get_email_hash, get_password_hash
 from snu_toto.app.users.repositories import UserRepository
 from snu_toto.app.users.exceptions import (
     EmailAlreadyExistsException, 
@@ -39,7 +40,7 @@ class UserService:
         self.user_repo = UserRepository(db)
         self.db = db
 
-    async def signup(self, user_in: UserSignupRequest) -> User:
+    async def signup(self, user_in: UserSignupRequest) -> UserResponse:
         # 1. 재가입 제한 기간 확인 (30일)
         hashed_email = get_email_hash(user_in.email)
         withdrawal_record = await self.user_repo.get_latest_withdrawal_by_hash(hashed_email)
@@ -105,8 +106,24 @@ class UserService:
         except Exception as e:
             await self.db.rollback()
             raise e
+        
+        # 로컬 가입자(미인증 상태)인 경우에만 verification_token 생성
+        v_token = None
+        if not new_user.is_snu_verified:
+            v_token = create_verification_token(new_user.user_id)
             
-        return new_user
+        return UserResponse(
+            user_id=new_user.user_id,
+            email=new_user.email,
+            nickname=new_user.nickname,
+            points=new_user.points,
+            role=new_user.role,
+            is_snu_verified=new_user.is_snu_verified,
+            is_verified=new_user.is_verified,
+            social_type=new_user.social_type,
+            created_at=new_user.created_at,
+            verification_token=v_token
+        )
 
     async def get_my_bets(
         self,
@@ -284,4 +301,11 @@ class UserService:
                 total_pages=math.ceil(total_count / limit) if total_count > 0 else 0
             )
         )
+    
+    async def cleanup_ghost_users(self):
+        """유령 유저 청소 작업 수행"""
+        count = await self.user_repo.delete_expired_unverified_users(expiry_minutes=15)
+        if count > 0:
+            print(f"[Cleanup] {count}명의 미인증 유령 유저가 삭제되었습니다.")
+        return count
     
