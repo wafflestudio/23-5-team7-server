@@ -57,6 +57,7 @@ async def update_event_status(
     service: EventServices = Depends(get_event_service),
     admin: User = Depends(get_current_admin_user) # 관리자 권한 체크
 ):
+    """이벤트 상태 수동 변경"""
     await service.update_event_status(event_id, payload.status)
     return {"message": "상태가 성공적으로 변경되었습니다."}
 

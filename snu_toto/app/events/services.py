@@ -307,6 +307,8 @@ class EventServices:
         if new_status not in allowed_map.get(current_status, []):
             raise InvalidStatusTransitionError()
         
+        session = self.event_repositories.session
+        
         # 상태에 따른 시간 업데이트 값 설정
         update_data = {"status": new_status}
         
@@ -317,14 +319,21 @@ class EventServices:
         # CLOSED로 변경 시: 종료 시각을 현재로
         elif new_status == EventStatus.CLOSED:
             update_data["end_at"] = get_kst_now()
+        
+        engine = SettlementEngine(session)
 
-        session = self.event_repositories.session
+        async def _do_cancel():
+            # CANCELLED로 변경 시: 베팅 환불
+            if new_status == EventStatus.CANCELLED:
+                await engine.run_cancel(event)
 
         if not session.in_transaction():
             async with session.begin():
                 await self.event_repositories.update_event_fields(event_id, update_data)
+                await _do_cancel()
         else:
             await self.event_repositories.update_event_fields(event_id, update_data)
+            await _do_cancel()
             await session.flush()
     
     async def settle_event(self, event_id: str, winner_option_ids: List[str]) -> Event:
@@ -349,7 +358,7 @@ class EventServices:
         engine = SettlementEngine(session)
         
         async def _do_settle():
-            await engine.run(event, winner_option_ids)
+            await engine.run_settle(event, winner_option_ids)
             return event
 
         if not session.in_transaction():

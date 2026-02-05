@@ -1,5 +1,6 @@
 import math
 from typing import List
+from sqlalchemy import false
 from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.events.models import Event, EventStatus
 from snu_toto.app.bets.models import Bet, BetStatus
@@ -10,7 +11,7 @@ class SettlementEngine:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def run(self, event: Event, winner_option_ids: List[str]):
+    async def run_settle(self, event: Event, winner_option_ids: List[str]):
         """전체 정산 프로세스 실행"""
         
         # 배당률 계산
@@ -29,6 +30,12 @@ class SettlementEngine:
 
         # 이벤트 상태 변경
         event.status = EventStatus.SETTLED
+    
+    async def run_cancel(self, event: Event):
+        """이벤트 취소 프로세스 실행"""
+        # 전액 환불
+        print("sdafsfafs")
+        await self._process_refund(event.bets)
 
     async def _process_payout(self, bets: List[Bet], winner_option_ids: List[str], ratio: float):
         """적중자에게 포인트 지급 및 낙첨 처리"""
@@ -53,7 +60,7 @@ class SettlementEngine:
                 bet.status = BetStatus.LOSE
 
     async def _process_refund(self, bets: List[Bet]):
-        """전액 환불 처리 (적중자 0명일 때)"""
+        """전액 환불 처리 (적중자 0명/이벤트 취소일 때)"""
         for bet in bets:
             user = bet.user
             user.points += bet.amount

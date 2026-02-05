@@ -19,7 +19,7 @@ class EventRepositories:
 
     async def get_event_by_id(self, event_id: str) -> Event | None:
         """이벤트 ID로 단일 이벤트 조회"""
-        result = await self.session.execute(select(Event).where(Event.event_id == event_id))
+        result = await self.session.execute(select(Event).where(Event.event_id == event_id).options(selectinload(Event.bets).selectinload(Bet.user)))
         return result.scalar_one_or_none()
     
     async def get_options_by_event_id(self, event_id: str) -> List[EventOption]:
