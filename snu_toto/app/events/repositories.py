@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import Depends
-from sqlalchemy import desc, select, update
+from sqlalchemy import desc, select, update, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from snu_toto.app.bets.models import Bet
@@ -65,16 +65,44 @@ class EventRepositories:
         if status:
             query = query.where(Event.status == status)
         
-        # 커서 조건 (end_at, event_id)
-        # 커서보다 나중에 마감되는 이벤트 or 같은 마감 시간이지만 event_id가 더 큰 이벤트
-        if cursor_end_at and cursor_event_id:
-            query = query.where(
-                (Event.end_at > cursor_end_at) |
-                ((Event.end_at == cursor_end_at) & (Event.event_id > cursor_event_id))
-            )
+        # status_priority: OPEN=1, READY=2, CLOSED=3, CANCELLED=4, SETTLED=5로 정렬 우선순위 부여
+        status_priority = case(
+            (Event.status == EventStatus.OPEN, 1),
+            (Event.status == EventStatus.READY, 2),
+            (Event.status == EventStatus.CLOSED, 3),
+            (Event.status == EventStatus.CANCELLED, 4),
+            (Event.status == EventStatus.SETTLED, 5),
+            else_=6
+        )
         
-        # 정렬: end_at 오름차순, event_id 오름차순 (동일한 end_at 처리)
-        query = query.order_by(Event.end_at.asc(), Event.event_id.asc())
+        # 커서 조건 (status_priority, end_at, event_id)
+        # 동일한 우선순위 그룹 내에서 end_at과 event_id로 커서 비교
+        if cursor_end_at and cursor_event_id:
+            # 먼저 커서의 이벤트 상태를 확인해야 함
+            # 간단하게 하기 위해 (status_priority, end_at, event_id) 튜플 비교
+            cursor_result = await self.session.execute(
+                select(Event).where(Event.event_id == cursor_event_id)
+            )
+            cursor_event = cursor_result.scalar_one_or_none()
+            
+            if cursor_event:
+                cursor_priority = (
+                    1 if cursor_event.status == EventStatus.OPEN else
+                    2 if cursor_event.status == EventStatus.READY else
+                    3 if cursor_event.status == EventStatus.CLOSED else
+                    4 if cursor_event.status == EventStatus.CANCELLED else
+                    5 if cursor_event.status == EventStatus.SETTLED else
+                    6
+                )
+                
+                query = query.where(
+                    (status_priority > cursor_priority) |
+                    ((status_priority == cursor_priority) & (Event.end_at > cursor_end_at)) |
+                    ((status_priority == cursor_priority) & (Event.end_at == cursor_end_at) & (Event.event_id > cursor_event_id))
+                )
+        
+        # 정렬: status_priority 오름차순 -> end_at 오름차순 -> event_id 오름차순
+        query = query.order_by(status_priority.asc(), Event.end_at.asc(), Event.event_id.asc())
         
         # limit + 1 조회 (has_more 판단용)
         query = query.limit(limit + 1)
