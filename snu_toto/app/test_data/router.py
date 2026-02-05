@@ -233,6 +233,177 @@ async def reset_and_seed_with_factory(
         )
 
 
+@router.delete("/users/by-email/{email}")
+async def delete_user_by_email(
+    email: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    특정 이메일의 사용자와 관련 데이터를 삭제합니다.
+    
+    - email: 삭제할 사용자의 이메일
+    
+    삭제되는 데이터:
+    - 사용자가 생성한 이벤트 (및 해당 이벤트의 좋아요, 베팅, 댓글, 옵션)
+    - 사용자의 베팅
+    - 사용자의 좋아요
+    - 사용자가 작성한 댓글
+    - 사용자 자체
+    """
+    try:
+        from snu_toto.app.likes.models import EventLike
+        from snu_toto.app.comments.models import Comment
+        from snu_toto.app.events.models import EventOption
+        from sqlalchemy import delete
+        
+        # 사용자 존재 확인
+        user_result = await db.execute(
+            select(User).where(User.email == email)
+        )
+        user = user_result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail=f"이메일 '{email}'에 해당하는 사용자를 찾을 수 없습니다."
+            )
+        
+        user_id = user.user_id
+        
+        # 사용자가 생성한 이벤트 조회
+        event_result = await db.execute(
+            select(Event).where(Event.creator_id == user_id)
+        )
+        user_events = event_result.scalars().all()
+        event_ids = [e.event_id for e in user_events]
+        
+        # 사용자가 생성한 이벤트 관련 데이터 삭제
+        if event_ids:
+            # 이벤트 좋아요 삭제
+            await db.execute(delete(EventLike).where(EventLike.event_id.in_(event_ids)))
+            
+            # 이벤트 베팅 삭제
+            await db.execute(delete(Bet).where(Bet.event_id.in_(event_ids)))
+            
+            # 이벤트 댓글 삭제
+            try:
+                await db.execute(delete(Comment).where(Comment.event_id.in_(event_ids)))
+            except:
+                pass
+            
+            # 이벤트 옵션 삭제
+            await db.execute(delete(EventOption).where(EventOption.event_id.in_(event_ids)))
+            
+            # 이벤트 삭제
+            await db.execute(delete(Event).where(Event.event_id.in_(event_ids)))
+        
+        # 사용자의 베팅 삭제 (다른 이벤트에 참여한 경우)
+        await db.execute(delete(Bet).where(Bet.user_id == user_id))
+        
+        # 사용자의 좋아요 삭제
+        await db.execute(delete(EventLike).where(EventLike.user_id == user_id))
+        
+        # 사용자가 작성한 댓글 삭제 (다른 이벤트에 작성한 댓글)
+        try:
+            await db.execute(delete(Comment).where(Comment.user_id == user_id))
+        except:
+            pass
+        
+        # 사용자 삭제
+        await db.execute(delete(User).where(User.user_id == user_id))
+        
+        await db.commit()
+        
+        return {
+            "message": f"사용자 '{email}'가 삭제되었습니다.",
+            "deleted": {
+                "user_id": user_id,
+                "email": email,
+                "events_count": len(event_ids)
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        raise HTTPException(
+            status_code=500,
+            detail=f"사용자 삭제 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
+        )
+
+
+@router.delete("/events/{event_id}")
+async def delete_event_by_id(
+    event_id: int,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    특정 ID의 이벤트와 관련 데이터를 삭제합니다.
+    
+    - event_id: 삭제할 이벤트의 ID
+    
+    삭제되는 데이터:
+    - 이벤트에 연결된 좋아요
+    - 이벤트에 연결된 베팅
+    - 이벤트에 연결된 댓글
+    - 이벤트 옵션
+    - 이벤트 자체
+    """
+    try:
+        from snu_toto.app.likes.models import EventLike
+        from snu_toto.app.comments.models import Comment
+        from snu_toto.app.events.models import EventOption
+        from sqlalchemy import delete
+        
+        # 이벤트 존재 확인
+        event_result = await db.execute(
+            select(Event).where(Event.event_id == event_id)
+        )
+        event = event_result.scalar_one_or_none()
+        
+        if not event:
+            raise HTTPException(
+                status_code=404,
+                detail=f"이벤트 ID {event_id}를 찾을 수 없습니다."
+            )
+        
+        # 관련 데이터 삭제
+        # 좋아요 삭제
+        await db.execute(delete(EventLike).where(EventLike.event_id == event_id))
+        
+        # 베팅 삭제
+        await db.execute(delete(Bet).where(Bet.event_id == event_id))
+        
+        # 댓글 삭제
+        try:
+            await db.execute(delete(Comment).where(Comment.event_id == event_id))
+        except:
+            pass
+        
+        # 이벤트 옵션 삭제
+        await db.execute(delete(EventOption).where(EventOption.event_id == event_id))
+        
+        # 이벤트 삭제
+        await db.execute(delete(Event).where(Event.event_id == event_id))
+        
+        await db.commit()
+        
+        return {
+            "message": f"이벤트 ID {event_id}가 삭제되었습니다.",
+            "deleted_event_id": event_id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        raise HTTPException(
+            status_code=500,
+            detail=f"이벤트 삭제 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
+        )
+
+
 @router.post("/create-test-event")
 async def create_custom_test_event(
     request: CreateTestEventRequest = Body(...),
