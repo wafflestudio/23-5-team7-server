@@ -1,4 +1,5 @@
 from typing import Annotated, List, Optional
+import uuid
 from fastapi import Depends
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from snu_toto.app.core.database import get_db_session
 from snu_toto.app.bets.models import Bet
 from snu_toto.app.events.models import Event, EventOption
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import User, PointHistory, PointReason
 
 class BetRepositories:
     def __init__(self, session: Annotated[AsyncSession, Depends(get_db_session)]) -> None:
@@ -50,13 +51,31 @@ class BetRepositories:
         await self.session.refresh(bet)
         return bet
     
-    async def update_user_points(self, user_id: str, amount: int) -> None:
-        """사용자 포인트 업데이트"""
+    async def update_user_points(self, user_id: str, amount: int, bet_id: str) -> None:
+        """사용자 포인트 업데이트 및 히스토리 기록"""
+        # 현재 유저 포인트 조회
+        user = await self.get_user_by_id(user_id)
+        if not user:
+            return
+        
+        # 포인트 차감
         await self.session.execute(
             update(User)
             .where(User.user_id == user_id)
             .values(points=User.points - amount)
         )
+        
+        # PointHistory 기록 추가
+        new_points = user.points - amount
+        point_history = PointHistory(
+            history_id=str(uuid.uuid4()),
+            user_id=user_id,
+            bet_id=bet_id,
+            change_amount=-amount,  # 음수로 저장 (차감)
+            reason=PointReason.BET,
+            points_after=new_points
+        )
+        self.session.add(point_history)
     
     async def update_option_stats(self, option_id: str, amount: int) -> None:
         """옵션 통계 업데이트 (베팅 금액, 참여자 수)"""

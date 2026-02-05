@@ -66,8 +66,8 @@ class BetServices:
                     )
                     bet = await self.bet_repositories.create_bet(bet)
                     
-                    # 사용자 포인트 차감
-                    await self.bet_repositories.update_user_points(user_id, bet_data.bet_amount)
+                    # 사용자 포인트 차감 및 히스토리 기록
+                    await self.bet_repositories.update_user_points(user_id, bet_data.bet_amount, bet.bet_id)
                     
                     # 옵션 통계 업데이트
                     await self.bet_repositories.update_option_stats(bet_data.option_id, bet_data.bet_amount)
@@ -83,8 +83,8 @@ class BetServices:
                 )
                 bet = await self.bet_repositories.create_bet(bet)
                 
-                # 사용자 포인트 차감
-                await self.bet_repositories.update_user_points(user_id, bet_data.bet_amount)
+                # 사용자 포인트 차감 및 히스토리 기록
+                await self.bet_repositories.update_user_points(user_id, bet_data.bet_amount, bet.bet_id)
                 
                 # 옵션 통계 업데이트
                 await self.bet_repositories.update_option_stats(bet_data.option_id, bet_data.bet_amount)
