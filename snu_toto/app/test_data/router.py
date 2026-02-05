@@ -339,7 +339,7 @@ async def delete_user_by_email(
 
 @router.delete("/events/{event_id}")
 async def delete_event_by_id(
-    event_id: int,
+    event_id: str,
     db: AsyncSession = Depends(get_db_session)
 ):
     """
