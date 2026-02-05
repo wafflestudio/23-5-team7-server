@@ -34,6 +34,7 @@ async def update_all_rankings():
             result = await session.execute(
                 select(User.user_id, User.points, User.nickname)
                 .where(User.is_deleted == False) # 탈퇴 유저 제외
+                .where(User.is_snu_verified == True) # 서울대 이메일 인증 유저만 포함
                 .order_by(User.points.desc())
             )
             users = result.all()
