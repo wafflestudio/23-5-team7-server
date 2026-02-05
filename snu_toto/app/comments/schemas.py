@@ -6,7 +6,7 @@ from snu_toto.app.comments.exceptions import EmptyCommentContentError
 
 class CommentCreateRequest(BaseModel):
     """댓글 생성 요청"""
-    content: str = Field(..., min_length=1, max_length=500, description="댓글 내용 (1~500자)")
+    content: str = Field(..., min_length=1, max_length=2000, description="댓글 내용 (1~2000자)")
 
     @field_validator('content')
     @classmethod
@@ -18,7 +18,7 @@ class CommentCreateRequest(BaseModel):
 
 class CommentUpdateRequest(BaseModel):
     """댓글 수정 요청"""
-    content: str = Field(..., min_length=1, max_length=500, description="댓글 내용 (1~500자)")
+    content: str = Field(..., min_length=1, max_length=2000, description="댓글 내용 (1~2000자)")
 
     @field_validator('content')
     @classmethod

@@ -58,10 +58,10 @@ class Comment(Base):
     event: Mapped["Event"] = relationship("Event", back_populates="comments")
     user: Mapped["User"] = relationship("User", back_populates="comments")
 
-    # 제약 조건: 댓글 내용은 1~500자
+    # 제약 조건: 댓글 내용은 1~2000자
     __table_args__ = (
         CheckConstraint(
-            "LENGTH(content) >= 1 AND LENGTH(content) <= 500",
-            name="ck_comment_content_length"
+            "LENGTH(content) >= 1 AND LENGTH(content) <= 2000",
+            name="ck_comment_content_length_v2"
         ),
     )
