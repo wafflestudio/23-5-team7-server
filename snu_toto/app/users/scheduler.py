@@ -11,9 +11,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
 from snu_toto.app.core.config import DB_SETTINGS, REDIS_SETTINGS
+from snu_toto.app.core.database import AsyncSessionLocal
 from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User
 from redis.asyncio import from_url
+
+from snu_toto.app.users.repositories import UserRepository
+from snu_toto.app.users.services import UserService
 
 
 async def update_all_rankings():
@@ -119,4 +123,35 @@ def start_ranking_scheduler():
     scheduler.start()
     print("[스케줄러] 랭킹 업데이트 스케줄러 시작됨 (매시 00분 실행)")
     
+    return scheduler
+
+async def run_ghost_user_cleanup():
+    """배치 작업 실행 함수"""
+    async with AsyncSessionLocal() as session:
+        # 서비스 수동 주입
+        repo = UserRepository(db=session)
+        service = UserService(db=session)
+        
+        try:
+            await service.cleanup_ghost_users()
+            await session.commit()
+        except Exception as e:
+            await session.rollback()
+            print(f"[Cleanup Error] {e}")
+
+def start_cleanup_scheduler():
+    """스케줄러 시작 (1분마다 실행)"""
+    scheduler = AsyncIOScheduler()
+    
+    # 1분마다 실행
+    scheduler.add_job(
+        run_ghost_user_cleanup,
+        'interval',
+        minutes=1,
+        id='cleanup_ghost_users',
+        replace_existing=True
+    )
+    
+    scheduler.start()
+    print("[스케줄러] 유령 유저 청소 스케줄러 시작됨 (1분 주기)")
     return scheduler

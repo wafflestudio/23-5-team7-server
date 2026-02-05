@@ -45,6 +45,7 @@ class UserResponse(BaseModel):
     is_verified: bool = False
     social_type: SocialType = SocialType.LOCAL
     created_at: datetime
+    verification_token: Optional[str] = None
 
 # 참여 중인 베팅 내역 조회용 스키마
 class UserBetItem(BaseModel):
