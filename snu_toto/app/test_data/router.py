@@ -7,7 +7,7 @@ from sqlalchemy import select
 from redis.asyncio import Redis
 from snu_toto.app.auth.dependencies import get_redis
 from snu_toto.app.core.database import get_db_session, engine, Base
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import PointHistory, User
 from snu_toto.app.events.models import Event, EventStatus
 from snu_toto.app.bets.models import Bet
 
@@ -339,7 +339,7 @@ async def delete_user_by_email(
 
 @router.delete("/events/{event_id}")
 async def delete_event_by_id(
-    event_id: int,
+    event_id: str,
     db: AsyncSession = Depends(get_db_session)
 ):
     """
