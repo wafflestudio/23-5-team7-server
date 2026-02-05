@@ -67,6 +67,7 @@ class UserService:
         # 가입 유형에 따라, LOCAL이면 social_id를 비우고, 소셜이면 password를 비우기
         hashed_password = None
         social_id = None
+        is_snu_verified = False
 
         if user_in.social_type == SocialType.LOCAL:
             # 로컬 가입: 비밀번호 해싱 필수, 소셜 ID는 무시
@@ -76,6 +77,8 @@ class UserService:
             if await self.user_repo.get_by_social_id(user_in.social_type.value, user_in.social_id):
                 raise SocialIdAlreadyExistsException()
             social_id = user_in.social_id
+            is_snu_verified = True
+
 
         # 객체 생성 및 저장
         new_user = User(
@@ -85,7 +88,7 @@ class UserService:
             points=10000,
             role="USER",
             is_verified=False,
-            is_snu_verified=False,
+            is_snu_verified=is_snu_verified,
             social_type=user_in.social_type.value,
             social_id=social_id,
             suspended_until=None,
