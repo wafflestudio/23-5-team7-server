@@ -37,6 +37,9 @@ class AuthService:
 
             access_token = create_login_access_token(user.user_id)
             refresh_token = create_refresh_token(user.user_id)
+
+            await self.user_repo.update_last_login(user.user_id)
+            
             return GoogleAuthResponse(
                 message="로그인 성공",
                 access_token=access_token,
@@ -67,6 +70,8 @@ class AuthService:
 
         if not verify_password(password, user.hashed_password):
             raise InvalidCredentialsException()
+    
+        await self.user_repo.update_last_login(user.user_id)
 
         if not user.is_snu_verified:
             # 인증 안 된 유저에게는 15분짜리 임시 토큰을 생성해서 던짐

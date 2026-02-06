@@ -377,17 +377,37 @@ class UserRepository:
 
         return users, total_count
     
-    async def delete_expired_unverified_users(self, expiry_minutes: int = AUTH_SETTINGS.SHORT_SESSION_LIFESPAN + 5):
-        """생성된 지 n분이 지났으나 SNU 인증을 하지 않은 유저 삭제"""
-        expiry_time = get_kst_now() - timedelta(minutes=expiry_minutes)
-            
+    async def delete_expired_unverified_users(
+            self, 
+            expiry_minutes: int = AUTH_SETTINGS.SHORT_SESSION_LIFESPAN + 1, 
+            long_expiry_hours: int = 6
+    ):
+        """
+        SNU 인증을 하지 않은 유저 삭제
+        조건: (미인증) AND [ {(가입 > 16분) AND (마지막 활동 > 16분)} OR (가입 > 6시간) ]
+        """
+        now = get_kst_now()
+        soft_limit = now - timedelta(minutes=expiry_minutes)
+        hard_limit = now - timedelta(hours=long_expiry_hours)
+
         try:
-            # 삭제 대상 ID들
+            # 삭제 대상 ID 조회
             target_query = (
                 select(User.user_id)
-                .where(User.is_snu_verified == False)
-                .where(User.created_at < expiry_time)
+                .where(
+                    and_(
+                        User.is_snu_verified == False,
+                        or_(
+                            and_(
+                                User.created_at < soft_limit,
+                                User.last_login_at < soft_limit
+                            ),
+                            User.created_at < hard_limit
+                        )
+                    )
+                )
             )
+            
             result = await self.db.execute(target_query)
             target_user_ids = result.scalars().all() # ID 리스트 확보
 
@@ -412,3 +432,12 @@ class UserRepository:
         except Exception as e:
             print(f"[Cleanup Error] {e}")
             raise e
+    
+    async def update_last_login(self, user_id: str) -> None:
+        """사용자의 last_login_at 시각을 현재시각으로 업데이트"""
+        await self.db.execute(
+            update(User)
+            .where(User.user_id == user_id)
+            .values(last_login_at=get_kst_now())
+        )
+        await self.db.commit()
