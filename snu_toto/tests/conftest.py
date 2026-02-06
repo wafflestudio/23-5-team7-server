@@ -390,3 +390,54 @@ def multipart_headers(token: str):
 # (since image_files matches by name 'image_files' and this is 'ignore').
 EMPTY_FILES = {"ignore_me": ("ignore.txt", b"", "text/plain")} 
 
+
+import json
+import uuid
+from snu_toto.app.core.date_utils import get_kst_now
+from datetime import timedelta
+
+@pytest_asyncio.fixture
+async def open_event_with_bets(async_client: AsyncClient, admin_token: str, auth_token: str) -> str:
+    """베팅이 있는 OPEN 상태 이벤트 생성 (공용 픽스처)"""
+    start_at = (get_kst_now() + timedelta(days=2) + timedelta(hours=1)).isoformat()
+    end_at = (get_kst_now() + timedelta(days=3) + timedelta(hours=2)).isoformat()
+    
+    event_data = {
+        "title": f"공용 테스트 이벤트 {uuid.uuid4()}",
+        "description": "테스트용",
+        "start_at": start_at,
+        "end_at": end_at,
+        "options": [
+            {"name": "옵션A", "option_image_index": -1},
+            {"name": "옵션B", "option_image_index": -1},
+        ],
+        "images": [],
+    }
+    
+    # 이벤트 생성
+    create_response = await async_client.post(
+        "/api/events",
+        data={"data": json.dumps(event_data)},
+        files=EMPTY_FILES,
+        headers=multipart_headers(admin_token),
+    )
+    assert create_response.status_code == 201
+    event_id = create_response.json()["event_id"]
+    option_id = create_response.json()["options"][0]["option_id"]
+    
+    # OPEN 상태로 변경
+    await async_client.patch(
+        f"/api/events/{event_id}/status",
+        json={"status": "OPEN"},
+        headers=auth_header(admin_token),
+    )
+    
+    # 베팅 추가
+    bet_res = await async_client.post(
+        f"/api/events/{event_id}/bets",
+        json={"option_id": option_id, "bet_amount": 100},
+        headers=auth_header(auth_token),
+    )
+    assert bet_res.status_code == 201
+    
+    return event_id
