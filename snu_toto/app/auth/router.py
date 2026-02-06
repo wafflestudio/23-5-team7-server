@@ -175,8 +175,24 @@ async def refresh_access_token(
 
     new_access, new_refresh, user = await auth_service.refresh_tokens(refresh_token)
 
-    response.set_cookie(key="access_token", value=new_access, httponly=True, secure=True, samesite="none")
-    response.set_cookie(key="refresh_token", value=new_refresh, httponly=True, secure=True, samesite="none")
+    response.set_cookie(
+        key="access_token", 
+        value=new_access, 
+        httponly=True, 
+        secure=True, 
+        samesite="none", 
+        path="/",
+        max_age=AUTH_SETTINGS.SHORT_SESSION_LIFESPAN * 60
+    )
+    response.set_cookie(
+        key="refresh_token", 
+        value=new_refresh, 
+        httponly=True, 
+        secure=True, 
+        samesite="none", 
+        path="/",
+        max_age=AUTH_SETTINGS.LONG_SESSION_LIFESPAN * 60
+    )
 
     return LoginResponse(
         access_token=new_access,
