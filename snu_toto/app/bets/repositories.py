@@ -58,15 +58,17 @@ class BetRepositories:
         if not user:
             return
         
+        # 먼저 계산
+        new_points = user.points - amount
+
         # 포인트 차감
         await self.session.execute(
             update(User)
             .where(User.user_id == user_id)
-            .values(points=User.points - amount)
+            .values(points=new_points)
         )
         
         # PointHistory 기록 추가
-        new_points = user.points - amount
         point_history = PointHistory(
             history_id=str(uuid.uuid4()),
             user_id=user_id,
