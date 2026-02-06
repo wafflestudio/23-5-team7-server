@@ -83,6 +83,7 @@ class OptionResponse(BaseModel):
     odds: float
     is_winner: bool | None
     option_image_url: str | None
+    my_bet_amount: int | None = None  # None: 로그인 안함, 0: 베팅 안함, >0: 베팅 금액
 
 class ImageResponse(BaseModel):
     image_url: str
