@@ -58,6 +58,105 @@ SNU-TOTO는 서울대학교 학생들이 다양한 학교 이벤트에 가상 �
 
 ---
 
+## 🗂️ERD
+- **ERD 링크**: https://www.erdcloud.com/d/WhWihZ7TCyWtsezf6
+
+```mermaid
+erDiagram
+    users ||--o{ events : creates
+    users ||--o{ bets : places
+    users ||--o{ comments : writes
+    users ||--o{ event_likes : likes
+    users ||--o{ point_history : has
+    users ||--|| user_withdrawal : has
+
+    events ||--o{ event_options : contains
+    events ||--o{ event_images : has
+    events ||--o{ bets : receives
+    events ||--o{ comments : has
+    events ||--o{ event_likes : receives
+
+    event_options ||--o{ bets : receives
+
+    users {
+        string user_id PK
+        string email
+        string hashed_password
+        string nickname
+        int points
+        enum role
+        boolean is_verified
+        enum social_type
+    }
+
+    events {
+        string event_id PK
+        string creator_id FK
+        string title
+        text description
+        enum status
+        datetime start_at
+        datetime end_at
+        int like_count
+        boolean is_eligible
+    }
+
+    event_options {
+        string option_id PK
+        string event_id FK
+        string name
+        int order
+        int option_total_amount
+        boolean is_winner
+    }
+
+    bets {
+        string bet_id PK
+        string user_id FK
+        string event_id FK
+        string option_id FK
+        int amount
+        enum status
+    }
+
+    comments {
+        string comment_id PK
+        string event_id FK
+        string user_id FK
+        text content
+        datetime created_at
+    }
+
+    event_likes {
+        string like_id PK
+        string event_id FK
+        string user_id FK
+    }
+
+    point_history {
+        string history_id PK
+        string user_id FK
+        int change_amount
+        enum reason
+        int points_after
+    }
+
+    event_images {
+        string image_id PK
+        string event_id FK
+        string image_url
+        int display_order
+    }
+
+    user_withdrawal {
+        string withdrawal_id PK
+        string user_id FK
+        datetime withdrawn_at
+    }
+```
+
+---
+
 ## ✨ 우리 조의 자랑거리
 
 ### 🎮 재미있는 서비스
