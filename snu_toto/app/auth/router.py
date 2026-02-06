@@ -157,11 +157,34 @@ async def confirm_verification_code(
 
 @auth_router.post("/login", response_model=LoginResponse)
 async def login(
+    response: Response,
     body: LoginRequest,
     auth_service: AuthService = Depends(get_auth_service)
 ):
     """일반 로그인"""
-    return await auth_service.authenticate_user(body.email, body.password)
+    result = await auth_service.authenticate_user(body.email, body.password)
+    
+    # 쿠키 설정
+    common_options = {
+        "httponly": True,
+        "secure": True,
+        "samesite": "none",
+        "path": "/",
+    }
+    response.set_cookie(
+        key="access_token", 
+        value=result.access_token, 
+        max_age=AUTH_SETTINGS.SHORT_SESSION_LIFESPAN * 60,
+        **common_options
+    )
+    response.set_cookie(
+        key="refresh_token", 
+        value=result.refresh_token, 
+        max_age=AUTH_SETTINGS.LONG_SESSION_LIFESPAN * 60,
+        **common_options
+    )
+
+    return result
 
 @auth_router.post("/refresh")
 async def refresh_access_token(
