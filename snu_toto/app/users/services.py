@@ -304,7 +304,7 @@ class UserService:
     
     async def cleanup_ghost_users(self):
         """유령 유저 청소 작업 수행"""
-        count = await self.user_repo.delete_expired_unverified_users(expiry_minutes=15)
+        count = await self.user_repo.delete_expired_unverified_users(expiry_minutes=20)
         if count > 0:
             print(f"[Cleanup] {count}명의 미인증 유령 유저가 삭제되었습니다.")
         return count
