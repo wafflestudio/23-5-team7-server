@@ -1,5 +1,6 @@
 import filetype
 import base64
+import math
 from redis.asyncio import Redis
 from snu_toto.app.bets.settlement.engine import SettlementEngine
 from snu_toto.app.core.date_utils import get_kst_now
@@ -147,9 +148,9 @@ class EventServices:
         total_bet_pool: int
     ) -> OptionResponse:
         """개별 옵션의 배당률을 계산하여 OptionResponse 생성"""
-        # 배당률 계산: 전체 풀 / 해당 옵션 베팅 금액
+        # 배당률 계산: 전체 풀 / 해당 옵션 베팅 금액 (소수점 2자리 내림)
         if option.option_total_amount > 0 and total_bet_pool > 0:
-            odds = round(total_bet_pool / option.option_total_amount, 2)
+            odds = math.floor(total_bet_pool / option.option_total_amount * 100) / 100
         else:
             odds = 0.0
         
