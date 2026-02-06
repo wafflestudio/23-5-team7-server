@@ -2,13 +2,14 @@ from typing import Annotated, Optional, List
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import and_, desc, func, or_, update
+from sqlalchemy import and_, delete, desc, func, or_, update
+from snu_toto.app.core.config import AUTH_SETTINGS
 from snu_toto.app.core.date_utils import get_kst_now
 from snu_toto.app.users.models import User, PointHistory, PointReason, UserWithdrawal
 from snu_toto.app.bets.models import Bet, BetStatus
 from snu_toto.app.events.models import Event, EventOption
 from snu_toto.app.core.database import get_db_session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 class UserRepository:
@@ -375,3 +376,39 @@ class UserRepository:
         users = result.scalars().all()
 
         return users, total_count
+    
+    async def delete_expired_unverified_users(self, expiry_minutes: int = AUTH_SETTINGS.SHORT_SESSION_LIFESPAN + 5):
+        """생성된 지 n분이 지났으나 SNU 인증을 하지 않은 유저 삭제"""
+        expiry_time = get_kst_now() - timedelta(minutes=expiry_minutes)
+            
+        try:
+            # 삭제 대상 ID들
+            target_query = (
+                select(User.user_id)
+                .where(User.is_snu_verified == False)
+                .where(User.created_at < expiry_time)
+            )
+            result = await self.db.execute(target_query)
+            target_user_ids = result.scalars().all() # ID 리스트 확보
+
+            if not target_user_ids:
+                return 0
+
+            # PointHistory에서 해당 유저들의 기록 삭제
+            await self.db.execute(
+                delete(PointHistory)
+                .where(PointHistory.user_id.in_(target_user_ids))
+            )
+
+            # User 테이블에서 해당 유저들을 최종 삭제
+            delete_result = await self.db.execute(
+                delete(User)
+                .where(User.user_id.in_(target_user_ids))
+            )
+            
+            deleted_count = delete_result.rowcount
+            return deleted_count
+
+        except Exception as e:
+            print(f"[Cleanup Error] {e}")
+            raise e

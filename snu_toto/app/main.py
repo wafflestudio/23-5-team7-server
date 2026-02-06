@@ -11,7 +11,7 @@ from snu_toto.app.core.database import engine
 from snu_toto.app.core.config import SETTINGS
 from snu_toto.app.common.exceptions import SnutotoException, MissingRequiredFieldException, InvalidFormatException
 from snu_toto.app.events.schedular import auto_update_event_status
-from snu_toto.app.users.scheduler import start_ranking_scheduler
+from snu_toto.app.users.scheduler import start_cleanup_scheduler, start_ranking_scheduler
 from snu_toto.app.users import models as user_models
 from snu_toto.app.events import models as event_models
 from snu_toto.app.bets import models as bet_models
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI):
     # 앱 시작 시
     task = asyncio.create_task(auto_update_event_status())
     ranking_scheduler = start_ranking_scheduler()
+    cleanup_scheduler = start_cleanup_scheduler()
 
     yield
 
@@ -30,6 +31,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
     task.cancel()
     ranking_scheduler.shutdown()
+    cleanup_scheduler.shutdown()
 
 
 app = FastAPI(

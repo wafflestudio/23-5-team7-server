@@ -31,6 +31,7 @@ async def signup(
     user_in: UserSignupRequest, 
     user_service: UserService = Depends(get_user_service) 
 ) -> UserResponse:
+    """회원가입"""
     return await user_service.signup(user_in)
 
 @users_router.get("/me/bets", status_code=status.HTTP_200_OK)
