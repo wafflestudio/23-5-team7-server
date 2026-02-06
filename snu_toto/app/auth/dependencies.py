@@ -1,6 +1,6 @@
 from datetime import datetime
-from typing import Optional
-from fastapi import Depends
+from typing import Annotated, Optional
+from fastapi import Cookie, Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from redis.asyncio import Redis, from_url
@@ -74,6 +74,8 @@ async def get_current_unverified_user(
     return user
 
 async def get_current_user(
+    request: Request,
+    access_token: Annotated[Optional[str], Cookie()] = None,
     token_obj: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db_session),
     v_service: VerificationService = Depends(get_verification_service),
@@ -81,13 +83,14 @@ async def get_current_user(
 ) -> User:
     """유효한 액세스 토큰을 확인하여 현재 로그인한 유저 객체 반환"""
 
-    if token_obj is None:
-        raise UnauthenticatedException()
-    
-    if token_obj.scheme.lower() != "bearer":
-        raise BadAuthHeaderException()
+    token = None
+    if access_token:
+        token = access_token
+    elif token_obj and token_obj.scheme.lower() == "bearer":
+        token = token_obj.credentials
 
-    token = token_obj.credentials
+    if not token:
+        raise UnauthenticatedException()
 
     if await v_service.is_token_blacklisted(token):
         raise InvalidTokenException()
