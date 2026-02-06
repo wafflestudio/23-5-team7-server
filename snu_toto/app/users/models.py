@@ -77,6 +77,13 @@ class User(Base):
         default=get_kst_now, 
         nullable=False
     )
+
+    # 마지막 로그인 시각
+    last_login_at: Mapped[DateTime] = mapped_column(
+        DateTime, 
+        default=get_kst_now, 
+        nullable=False
+    )
     
     # 관리자 여부
     role: Mapped[UserRole] = mapped_column(
