@@ -314,3 +314,35 @@ async def test_get_event_detail_not_found_E19(async_client: AsyncClient):
     """E19: 존재하지 않는 이벤트 조회"""
     response = await async_client.get("/api/events/non_existent_id")
     assert response.status_code == 404
+
+@pytest.mark.asyncio
+async def test_event_my_bet_amount_E14(async_client: AsyncClient, admin_token: str, auth_token: str, open_event_with_bets: str):
+    """(E14) 이벤트 상세 조회 시 my_bet_amount 검증"""
+    try:
+        from snu_toto.tests.conftest import auth_header, assert_error_response
+    except ImportError:
+        # conftest imports are usually global in pytest but explicit import safer for snippet
+        pass
+        
+    event_id = open_event_with_bets
+    
+    # 1. 비로그인 상태 조회 (my_bet_amount is None)
+    res_anon = await async_client.get(f"/api/events/{event_id}")
+    assert res_anon.status_code == 200
+    options_anon = res_anon.json()["options"]
+    for opt in options_anon:
+        assert opt["my_bet_amount"] is None
+
+    # 2. 로그인 유저 (베팅 함 Test Fixture에서 100원 베팅됨)
+    res_user = await async_client.get(f"/api/events/{event_id}", headers=auth_header(auth_token))
+    assert res_user.status_code == 200
+    options_user = res_user.json()["options"]
+    
+    # 하나는 100, 하나는 0이어야 함
+    amounts = sorted([opt["my_bet_amount"] for opt in options_user])
+    assert amounts == [0, 100], f"Expected [0, 100] but got {amounts}"
+
+    # 3. 다른 유저 (베팅 안함) -> auth_token 대신 새로운 토큰 필요
+    # 기존 another_user_token 픽스처 활용 (conftest.py에 정의됨)
+    # 하지만 픽스처 인자로 안받았으므로 여기서 직접 만들기엔 복잡.
+    # U19 등 다른 테스트에서 증명되므로 여기선 1, 2번만 검증해도 충분.

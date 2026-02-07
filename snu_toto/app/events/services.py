@@ -1,5 +1,6 @@
 import filetype
 import base64
+import math
 from redis.asyncio import Redis
 from snu_toto.app.bets.settlement.engine import SettlementEngine
 from snu_toto.app.core.date_utils import get_kst_now
@@ -13,6 +14,8 @@ from snu_toto.app.events.schemas import EventCreateRequest, EventDetailResponse,
 from snu_toto.app.events.utils import s3_uploader
 from snu_toto.app.auth.dependencies import get_redis
 from snu_toto.app.events.websocket import manager
+from snu_toto.app.bets.repositories import BetRepositories
+from snu_toto.app.likes.repositories import LikeRepository
 
 class EventServices:
     def __init__(self, event_repositories: Annotated[EventRepositories, Depends()], redis: Annotated[Redis, Depends(get_redis)]):
@@ -144,12 +147,13 @@ class EventServices:
     def get_option_details(
         self, 
         option: EventOption,
-        total_bet_pool: int
+        total_bet_pool: int,
+        my_bet_amount: int | None = None
     ) -> OptionResponse:
         """개별 옵션의 배당률을 계산하여 OptionResponse 생성"""
-        # 배당률 계산: 전체 풀 / 해당 옵션 베팅 금액
+        # 배당률 계산: 전체 풀 / 해당 옵션 베팅 금액 (소수점 2자리 내림)
         if option.option_total_amount > 0 and total_bet_pool > 0:
-            odds = round(total_bet_pool / option.option_total_amount, 2)
+            odds = math.floor(total_bet_pool / option.option_total_amount * 100) / 100
         else:
             odds = 0.0
         
@@ -160,7 +164,8 @@ class EventServices:
             participant_count=option.participant_count,
             odds=odds,
             is_winner=option.is_winner,
-            option_image_url=option.option_image_url
+            option_image_url=option.option_image_url,
+            my_bet_amount=my_bet_amount
         )
 
     async def get_event_details(self, event_id: str, user_id: str | None = None) -> EventDetailResponse:
@@ -178,9 +183,25 @@ class EventServices:
         # total participant 구하기
         total_participants = sum(option.participant_count for option in options)
 
-        # 옵션별 배당률 계산
+        # 유저의 베팅 정보 조회 (로그인한 경우)
+        user_bet_map: dict[str, int] = {}  # option_id -> amount
+        my_total_bet_amount: int | None = None
+        if user_id:
+            bet_repo = BetRepositories(self.event_repositories.session)
+            user_bet = await bet_repo.get_bet_by_user_and_event(user_id, event_id)
+            if user_bet:
+                user_bet_map[user_bet.option_id] = user_bet.amount
+                my_total_bet_amount = user_bet.amount
+            else:
+                my_total_bet_amount = 0
+
+        # 옵션별 배당률 계산 (유저 베팅 정보 포함)
         option_responses = [
-            self.get_option_details(option, total_bet_pool) 
+            self.get_option_details(
+                option, 
+                total_bet_pool,
+                my_bet_amount=user_bet_map.get(option.option_id, 0) if user_id else None
+            ) 
             for option in options
         ]
 
@@ -197,7 +218,6 @@ class EventServices:
         is_liked = None
         if user_id:
             # 로그인 사용자인 경우 좋아요 여부 확인
-            from snu_toto.app.likes.repositories import LikeRepository
             like_repo = LikeRepository(self.event_repositories.session)
             existing_like = await like_repo.get_like_by_event_and_user(event_id, user_id)
             is_liked = existing_like is not None
@@ -214,6 +234,7 @@ class EventServices:
             like_count=like_count,
             is_liked=is_liked,
             is_eligible=event.is_eligible,
+            my_total_bet_amount=my_total_bet_amount,
             options=option_responses,
             images=image_responses
         )

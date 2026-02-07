@@ -13,7 +13,7 @@ from sqlalchemy import select
 from snu_toto.app.core.config import DB_SETTINGS, REDIS_SETTINGS
 from snu_toto.app.core.database import AsyncSessionLocal
 from snu_toto.app.core.date_utils import get_kst_now
-from snu_toto.app.users.models import User
+from snu_toto.app.users.models import User, UserRole
 from redis.asyncio import from_url
 
 from snu_toto.app.users.repositories import UserRepository
@@ -39,6 +39,7 @@ async def update_all_rankings():
                 select(User.user_id, User.points, User.nickname)
                 .where(User.is_deleted == False) # 탈퇴 유저 제외
                 .where(User.is_snu_verified == True) # 서울대 이메일 인증 유저만 포함
+                .where(User.role != UserRole.ADMIN)
                 .order_by(User.points.desc())
             )
             users = result.all()
