@@ -105,15 +105,34 @@ async def clear_test_data(
 
 @router.post("/reset-database")
 async def reset_database(
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis)
 ):
-    """DB 초기화 (모든 테이블 삭제 후 재생성)"""
+    """DB 초기화 (모든 테이블 삭제 후 재생성) + Redis 랭킹 캐시 삭제"""
     try:
+        # 모든 모델 import (Base.metadata에 등록하기 위함)
+        from snu_toto.app.users.models import User, PointHistory
+        from snu_toto.app.events.models import Event, EventOption, EventImage
+        from snu_toto.app.bets.models import Bet
+        from snu_toto.app.likes.models import EventLike
+        from snu_toto.app.comments.models import Comment
+        
+        # DB 테이블 삭제 및 재생성
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         
-        return {"message": "데이터베이스가 초기화되었습니다."}
+        # Redis 랭킹 캐시 삭제
+        ranking_keys = await redis.keys("ranking:*")
+        user_ranking_keys = await redis.keys("user_ranking:*")
+        all_keys = ranking_keys + user_ranking_keys
+        if all_keys:
+            await redis.delete(*all_keys)
+        
+        return {
+            "message": "데이터베이스가 초기화되었습니다.",
+            "redis_keys_deleted": len(all_keys)
+        }
     except Exception as e:
         import traceback
         raise HTTPException(
@@ -507,4 +526,134 @@ async def create_custom_test_event(
         raise HTTPException(
             status_code=500,
             detail=f"테스트 이벤트 생성 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
+        )
+
+
+@router.post("/create-waffle-final-event")
+async def create_waffle_final_event(
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis)
+):
+    """
+    와플 최종 발표 우승팀 예측 이벤트 생성
+    
+    - 제목: 와플 최종 발표 우승팀은?
+    - 옵션: 1조~10조 팀명
+    - 상태: OPEN
+    - 시작: 2일 전
+    - 종료: 오늘 오후 5시
+    - 선정: True
+    - 좋아요: 5개
+    """
+    try:
+        from snu_toto.app.events.services import EventServices
+        from snu_toto.app.events.repositories import EventRepositories
+        from snu_toto.app.core.date_utils import get_kst_now
+        from snu_toto.app.core.security import get_password_hash
+        from snu_toto.app.users.models import UserRole, SocialType
+        import uuid
+        from snu_toto.app.events.models import EventOption
+        from snu_toto.app.likes.models import EventLike
+        
+        # 사용자 조회
+        user_result = await db.execute(select(User))
+        users = list(user_result.scalars().all())
+        
+        # 사용자가 없으면 테스트 사용자 5명 생성
+        if not users:
+            for i in range(5):
+                user = User(
+                    user_id=str(uuid.uuid4()),
+                    email=f"admin{i}@snu.ac.kr",
+                    nickname=f"와플관리자{i}",
+                    hashed_password=get_password_hash("test123!"),
+                    points=50000,
+                    role=UserRole.ADMIN,
+                    is_verified=True,
+                    is_snu_verified=True,
+                    social_type=SocialType.LOCAL
+                )
+                db.add(user)
+                users.append(user)
+            await db.flush()
+        
+        admin_user = next((u for u in users if u.role.value == "ADMIN"), users[0])
+        
+        # 시간 설정
+        now = get_kst_now()
+        start_at = now - timedelta(days=2)
+        end_at = now.replace(hour=17, minute=0, second=0, microsecond=0)
+        created_at = start_at - timedelta(hours=1)
+        
+        # 이벤트 생성
+        event = Event(
+            event_id=str(uuid.uuid4()),
+            creator_id=admin_user.user_id,
+            title="와플 최종 발표 우승팀은?",
+            description="와플스튜디오 최종 발표 우승팀을 예측해보세요!",
+            status=EventStatus.OPEN,
+            created_at=created_at,
+            start_at=start_at,
+            end_at=end_at,
+            is_eligible=True,
+            like_count=0
+        )
+        db.add(event)
+        await db.flush()
+        
+        # 옵션 생성
+        options = [
+            "1조 행샤", "2조 알리샤", "3조 SNUXI", "4조 Moiming", "5조 샤터디",
+            "6조 바로바로", "7조 스누토토", "8조 AllClear", "9조 감귤마켓", "10조 1gram"
+        ]
+        for idx, name in enumerate(options):
+            opt = EventOption(
+                option_id=str(uuid.uuid4()),
+                event_id=event.event_id,
+                name=name,
+                order=idx,
+                participant_count=0,
+                option_total_amount=0
+            )
+            db.add(opt)
+        await db.flush()
+        
+        # 좋아요 5개 추가
+        like_users = users[:min(5, len(users))]
+        for user in like_users:
+            db.add(EventLike(
+                like_id=str(uuid.uuid4()),
+                event_id=event.event_id,
+                user_id=user.user_id
+            ))
+            event.like_count += 1
+        await db.flush()
+        
+        # Redis 스케줄러에 등록
+        event_service = EventServices(EventRepositories(db), redis)
+        await event_service._add_to_event_scheduler(event.event_id, event.start_at, event.end_at)
+        
+        await db.commit()
+        
+        return {
+            "message": "와플 최종 발표 이벤트가 생성되었습니다.",
+            "event": {
+                "event_id": event.event_id,
+                "title": event.title,
+                "status": event.status.value,
+                "start_at": event.start_at.isoformat(),
+                "end_at": event.end_at.isoformat(),
+                "is_eligible": event.is_eligible,
+                "like_count": event.like_count,
+                "options": options
+            }
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        import traceback
+        raise HTTPException(
+            status_code=500,
+            detail=f"와플 이벤트 생성 중 오류 발생: {str(e)}\n{traceback.format_exc()}"
         )
