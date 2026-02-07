@@ -26,19 +26,20 @@ async def auto_update_event_status():
                 kst_now = get_kst_now()
                 now_ts = int(kst_now.timestamp())
                 
-                # 1. 매일 20:00 인기 이벤트 선정 배치
-                if kst_now.hour == 20 and kst_now.minute == 0:
-                    # 오늘 날짜로 된 전용 키 생성 (예: event:batch:done:2026-02-02)
-                    today_str = kst_now.strftime("%Y-%m-%d")
-                    batch_lock_key = f"event:batch:done:{today_str}"
+                # 1. 10분마다 선정
+                if kst_now.minute % 10 == 0:
+                    ten_min_block = (kst_now.minute // 10) * 10
+                    # 시간대까지 포함된 전용 키 생성. 결과 예시: event:batch:done:2026-02-07-14-30
+                    time_str = kst_now.strftime(f"%Y-%m-%d-%H-{ten_min_block:02d}")
+                    batch_lock_key = f"event:batch:done:{time_str}"
                     
                     # Redis의 setnx를 이용하여 딱 한 번만 실행 (nx=True, ex=3600초 동안 키 유지)
                     # 성공하면(True) 오늘 처음 실행하는 것, 실패하면(False) 이미 실행된 것
                     is_first_run = await redis.set(batch_lock_key, "done", ex=3600, nx=True)
                     
                     if is_first_run:
-                        print(f"[{kst_now}] 20:00 배치 시작: 상위 인기 이벤트 선정 중...")
-                        await service.process_daily_event_selection()
+                        print(f"[{kst_now}] 배치 시작: 상위 인기 이벤트 선정 중...")
+                        await service.process_event_selection()
                 
                 # 2. OPEN 대상 처리 (READY -> OPEN)
                 open_targets = await redis.zrangebyscore("event:sched:open", "-inf", now_ts)
