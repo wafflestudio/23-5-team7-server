@@ -410,7 +410,7 @@ class EventServices:
         
         await manager.broadcast_to_event(event_id, odds_data)
 
-    async def process_daily_event_selection(self):
+    async def process_event_selection(self):
         """10분마다 이벤트 선정"""
         # 조건(최소 좋아요 10개 이상)에 맞는 상위 100개 이벤트 조회
         top_events = await self.event_repositories.get_top_liked_ready_events(limit=100, min_likes=3) # 테스트 후 수정 필요
