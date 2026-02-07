@@ -47,7 +47,7 @@ class EventCreateRequest(BaseModel):
         if self.start_at <= now + timedelta(minutes=59):
             raise InvalidDateError()
         # 시작일 기준 최소 59분 후
-        if self.end_at <= self.start_at + timedelta(hours=59):
+        if self.end_at <= self.start_at + timedelta(hours=23) + timedelta(minutes=59):
             raise InvalidDateError()
         return self
     
