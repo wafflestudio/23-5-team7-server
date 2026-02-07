@@ -185,11 +185,15 @@ class EventServices:
 
         # 유저의 베팅 정보 조회 (로그인한 경우)
         user_bet_map: dict[str, int] = {}  # option_id -> amount
+        my_total_bet_amount: int | None = None
         if user_id:
             bet_repo = BetRepositories(self.event_repositories.session)
             user_bet = await bet_repo.get_bet_by_user_and_event(user_id, event_id)
             if user_bet:
                 user_bet_map[user_bet.option_id] = user_bet.amount
+                my_total_bet_amount = user_bet.amount
+            else:
+                my_total_bet_amount = 0
 
         # 옵션별 배당률 계산 (유저 베팅 정보 포함)
         option_responses = [
@@ -230,6 +234,7 @@ class EventServices:
             like_count=like_count,
             is_liked=is_liked,
             is_eligible=event.is_eligible,
+            my_total_bet_amount=my_total_bet_amount,
             options=option_responses,
             images=image_responses
         )
