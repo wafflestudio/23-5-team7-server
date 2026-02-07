@@ -100,6 +100,7 @@ class EventDetailResponse(BaseModel):
     like_count: int
     is_liked: bool | None
     is_eligible: bool
+    my_total_bet_amount: int | None = None  # None: 로그인 안함, 0: 베팅 안함, >0: 총 베팅 금액
     options: list[OptionResponse]
     images: list[ImageResponse]
 
