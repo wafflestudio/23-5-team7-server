@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 from snu_toto.app.auth.dependencies import get_redis
 from snu_toto.app.core.database import get_db_session, engine, Base
 from snu_toto.app.users.models import PointHistory, User
-from snu_toto.app.events.models import Event, EventStatus
+from snu_toto.app.events.models import Event, EventImage, EventStatus
 from snu_toto.app.bets.models import Bet
 
 
@@ -351,6 +351,7 @@ async def delete_event_by_id(
     - 이벤트에 연결된 좋아요
     - 이벤트에 연결된 베팅
     - 이벤트에 연결된 댓글
+    - 이벤트에 연결된 이미지
     - 이벤트 옵션
     - 이벤트 자체
     """
@@ -384,6 +385,8 @@ async def delete_event_by_id(
             await db.execute(delete(Comment).where(Comment.event_id == event_id))
         except:
             pass
+
+        await db.execute(delete(EventImage).where(EventImage.event_id == event_id))
         
         # 이벤트 옵션 삭제
         await db.execute(delete(EventOption).where(EventOption.event_id == event_id))
