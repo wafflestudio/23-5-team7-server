@@ -411,9 +411,9 @@ class EventServices:
         await manager.broadcast_to_event(event_id, odds_data)
 
     async def process_daily_event_selection(self):
-        """매일 20:00 인기 이벤트 선정 로직"""
-        # 조건(최소 좋아요 3개 이상)에 맞는 상위 3개 이벤트 조회
-        top_events = await self.event_repositories.get_top_liked_ready_events(limit=3, min_likes=3)
+        """10분마다 이벤트 선정"""
+        # 조건(최소 좋아요 10개 이상)에 맞는 상위 100개 이벤트 조회
+        top_events = await self.event_repositories.get_top_liked_ready_events(limit=100, min_likes=3) # 테스트 후 수정 필요
         
         if not top_events:
             print("[Batch] 선정된 이벤트가 없습니다.")
