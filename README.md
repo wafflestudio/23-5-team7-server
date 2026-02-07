@@ -92,10 +92,10 @@ erDiagram
 - 회원가입 시 **10,000 포인트**가 지급됩니다!
 
 - **회원가입 페이지**
-- ![alt text](image-1.png)
+- ![alt text](images/image-1.png)
 
 - **로그인 페이지**
-- ![alt text](image.png)
+- ![alt text](images/image.png)
 
 ### 2️⃣ 이벤트 탐색 & 베팅
 - 메인 화면에서 진행 중인 다양한 이벤트를 확인하세요.
@@ -104,16 +104,16 @@ erDiagram
 - 베팅 현황에 따라 **배당률이 실시간으로 변동**됩니다!
 
 - **이벤트 목록 조회 페이지**
-- ![alt text](image-2.png)
+- ![alt text](images/image-2.png)
 
 - **이벤트 상세 조회**
-- ![alt text](image-3.png)
+- ![alt text](images/image-3.png)
 
 - **베팅하기**
-- ![alt text](image-4.png)
+- ![alt text](images/image-4.png)
 
 - **댓글 작성 및 조회 기능**
-- ![alt text](image-5.png)
+- ![alt text](images/image-5.png)
 
 
 
@@ -123,7 +123,7 @@ erDiagram
 - 생성된 이벤트는 **READY 상태**로 대기하며, **좋아요를 많이 받아야 오픈**됩니다!
 
 - **이벤트 생성 페이지**
-- ![alt text](image-9.png)
+- ![alt text](images/image-9.png)
 
 ### 4️⃣ 결과 확인 & 정산
 - 이벤트 종료 후 결과가 발표되면 자동으로 정산됩니다.
@@ -131,17 +131,17 @@ erDiagram
 - 내 베팅 내역과 포인트 히스토리를 마이페이지에서 확인하세요.
 
 - **정산된 이벤트**
-- ![alt text](image-6.png)
+- ![alt text](images/image-6.png)
 
 - **마이페이지**
-- ![alt text](image-7.png)
+- ![alt text](images/image-7.png)
 
 ### 5️⃣ 랭킹 경쟁
 - 포인트를 많이 모아 랭킹 상위권에 도전하세요!
 - 친구들과 함께 누가 더 예측을 잘 하는지 겨뤄보세요.
 
 - **랭킹 페이지**
-- ![alt text](image-8.png)
+- ![alt text](images/image-8.png)
 ---
 
 ## 📊 배당률 시스템
@@ -278,7 +278,7 @@ docs: README에 배당률 설명 추가
 
 ### 번외
 - 도박 중독 상담
-![alt text](image-11.png)
+![alt text](images/image-11.png)
 
 - 대출 상담
-![alt text](image-10.png)
+![alt text](images/image-10.png)
